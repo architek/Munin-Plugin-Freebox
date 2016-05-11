@@ -4,18 +4,32 @@ freebox - Plugin for monitoring Freebox parameters.
 
 # APPLICABLE SYSTEMS
 
-Any computer on the same LAN as a Freebox v6. Perl module [WWW::FBX](https://metacpan.org/pod/WWW::FBX)
+Any computer that has access to a Freebox v6. Perl module [WWW::FBX](https://metacpan.org/pod/WWW::FBX)
 is required for this plugin to function and can be installed from CPAN.
 
 # CONFIGURATION
 
-To configure, run autoconf and add a freebox section
+    cp freebox_ /etc/munin/plugins
+
+    cd /etc/munin/plugins
+
+    ln -s freebox_ freebox_bandwidth
+    ln -s freebox_ freebox_freeplug
+    ln -s freebox_ freebox_temp
+
+To configure, run autoconf
+ ./freebox\_ autoconf
+
+And add a freebox section in /etc/munin/plugin-conf.d/munin-node as follow
 
     [freebox_*]
     env.app_token value-of-the-token
     env.track_id value-of-the-track_id
 
-to the munin-node configuration file.
+Check everything is working with
+ munin-run --debug freebox\_bandwidth
+ munin-run --debug freebox\_freeplug
+ munin-run --debug freebox\_temp
 
 # USAGE
 
@@ -25,9 +39,10 @@ to see all the possible operation modes and create a symlink called
 `freebox_mode` to this plugin from the Munin plugins directory, e.g.
 `freebox_temp`.
 
-# AUTHOR
+# AUTHORS
 
 Copyright 2014 Vadim Zeitlin <vz-cpan@zeitlins.org>
+
 Modified by Laurent Kislaire
 
 # LICENSE
