@@ -1,58 +1,45 @@
-Munin Plugin for Freebox
-========================
+# NAME
 
-Overview
---------
+freebox - Plugin for monitoring Freebox parameters.
 
-This can only be useful to you if you are:
+# APPLICABLE SYSTEMS
 
-1. Client of French ISP Free and have a Freebox v6.
-2. Use Munin for monitoring your server.
+Any computer on the same LAN as a Freebox v6. Perl module [WWW::FBX](https://metacpan.org/pod/WWW::FBX)
+is required for this plugin to function and can be installed from CPAN.
 
-If _both_ of these conditions are true, you may find this plugin useful to
-add the display of Freebox data to your Munin graphs, please read on.
+# CONFIGURATION
 
+To configure, run autoconf and add a freebox section
 
-Installation
-------------
+    [freebox_*]
+    env.app_token value-of-the-token
+    env.track_id value-of-the-track_id
 
-This plugin relies on
-[WebService::Freebox](https://metacpan.org/pod/WebService::Freebox) Perl
-package. The simplest way to install it is to get it from CPAN, e.g.
+to the munin-node configuration file.
 
-	$ cpan -i WebService::Freebox
+# USAGE
 
-As part of its installation, `freebox-authorize` program is made available.
-You need to run it once, before using this plugin, in order to obtain the
-authorization token needed to connect to the Freebox:
+This is a wildcard plugin which can be used to monitor several different
+families of Freebox parameters. Run it with `suggest` command line argument
+to see all the possible operation modes and create a symlink called
+`freebox_mode` to this plugin from the Munin plugins directory, e.g.
+`freebox_temp`.
 
-	$ freebox-authorize org.munin.plugin.freebox "Munin Freebox plugin" 1.0 "Name of your server here"
+# AUTHOR
 
-Keep this token secret as it is sufficient to connect to the Freebox (i.e. no
-password is required)!
+Copyright 2014 Vadim Zeitlin <vz-cpan@zeitlins.org>
+Modified by Laurent Kislaire
 
+# LICENSE
 
-Configuration
--------------
+GPLv2
 
-Add the following section to `/etc/munin/plugin-conf.d/munin-node` file:
+# HISTORY
 
-	[freebox_*]
-	env.app_token token-obtained-above
+- 2014-07-19 Initial version.
+- 2016-05-11 Modified.
 
-Add a symbolic link from `/etc/munin/plugins/freebox_temp` to wherever you put
-the file `freebox_` itself, e.g. `/usr/local/share/munin/plugins`.
+# MAGIC MARKERS
 
-As with any Munin plugin, check that it works manually:
-
-	$ munin-run --debug freebox_temp
-
-If everything looks correctly, restart munin to start using it:
-
-	$ service munin-node restart
-
-
-Copyright and Licence
----------------------
-
-This plugin is (c) 2014 Vadim Zeitlin and distributed under the terms of GPLv2.
+    #%# family=manual
+    #%# capabilities=autoconf suggest

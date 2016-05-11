@@ -6,20 +6,16 @@ freebox - Plugin for monitoring Freebox parameters.
 
 =head1 APPLICABLE SYSTEMS
 
-Any computer on the same LAN as a Freebox v6. Perl module L<WebService::Freebox>
+Any computer on the same LAN as a Freebox v6. Perl module L<WWW::FBX>
 is required for this plugin to function and can be installed from CPAN.
 
 =head1 CONFIGURATION
 
-Prior to using this plugin, an authentication token allowing it connect to
-Freebox must be generated. Do this by running the following command:
-
-    freebox-authorize $app_id "Munin Freebox plugin" $app_version "Your server"
-
-to obtain the app token and add a section
+To configure, run autoconf and add a freebox section
 
     [freebox_*]
-    env.app_token = value-of-the-token
+    env.app_token value-of-the-token
+    env.track_id value-of-the-track_id
 
 to the munin-node configuration file.
 
@@ -34,6 +30,7 @@ C<freebox_temp>.
 =head1 AUTHOR
 
 Copyright 2014 Vadim Zeitlin <vz-cpan@zeitlins.org>
+Modified by Laurent Kislaire
 
 =head1 LICENSE
 
@@ -44,6 +41,8 @@ GPLv2
 =over 4
 
 =item 2014-07-19 Initial version.
+
+=item 2016-05-11 Modified.
 
 =back
 
@@ -58,58 +57,51 @@ use strict;
 use warnings;
 use Munin::Plugin;
 
-my ($app_id, $app_version) = ('org.munin.plugin.freebox', '1.0');
+my ($app_id, $app_name, $app_version, $device_name) = ('org.munin.plugin.freebox', 'Munin Freebox plugin', '2.0', 'PC');
 
 sub get_freebox {
     if (!defined($ENV{app_token})) {
         die <<EOF
-Use the following command:
-
-    freebox-authorize $app_id "Munin Freebox plugin" $app_version "Your server"
-
-to obtain the app token and add a section
-
+Please autoconf the plugin and fill in your configuration app_token
     [freebox_*]
     env.app_token = value-of-the-token
+    env.track_id  = value-of-track-id
 
 to use this plugin.
 EOF
     }
-
-    use WebService::Freebox;
-    my $fb = WebService::Freebox->new(
-                    app_id => $app_id,
-                    app_version => $app_version,
-                    app_token => $ENV{app_token}
-                );
-
-    set_state_name('freebox_session');
-
-    my @state = restore_state();
-    my $session_token = $state[0] if @state;
-    $session_token = $fb->login($session_token);
-
-    save_state($session_token);
-
-    return $fb;
+    use WWW::FBX;
+    WWW::FBX->new( 
+                app_id => $app_id,
+                app_name => $app_name,
+                app_version => $app_version,
+                device_name => $device_name,
+                track_id => $ENV{track_id},
+                app_token => $ENV{app_token},
+            );
 }
 
 
 if (defined $ARGV[0] and $ARGV[0] eq 'autoconf') {
     my $error;
-    if (!eval 'require WebService::Freebox;') {
-        $error = 'WebService::Freebox not found';
-    } else {
-        eval {
-            WebService::Freebox->new(
-                app_id => $app_id,
-                app_version => $app_version
-            );
-        };
-        $error = $@ if $@;
-    }
+    eval {
+        require WWW::FBX;
+        require Scalar::Util;
+        my $fbx=WWW::FBX->new(app_id=>$app_id,app_name=>$app_name,app_version=>$app_version,device_name=>$device_name);
+        my $app_token = $fbx->app_token;
+        my $track_id = $fbx->track_id;
 
-    print defined $error ? "no ($error)\n" : "yes\n";
+        print <<EOF
+Now configure a munin section as:
+[freebox_*]
+env.app_token $app_token
+env.track_id $track_id
+EOF
+    };
+    if ($error = $@) {
+        $error = $error->error if Scalar::Util::blessed($error) and $error->isa('WWW::FBX::Error');
+    }
+    print $error ? "no ($error)\n" : "yes\n";
     exit 0
 }
 
@@ -184,15 +176,15 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
 
 die "Usage: $0 [autoconf|config]\n" if @ARGV;
 
-my $fb = get_freebox();
+my $fb = get_freebox;
 
 if ($mode eq 'temp') {
-    my $sc = $fb->get_system_config();
+    my $sc = $fb->system;
     for my $t (keys %temps) {
         print "$t.value " . $sc->{"temp_$t"} . "\n";
     }
 } elsif ($mode eq 'bandwidth') {
-    my $cs = $fb->get_connection_status();
+    my $cs = $fb->connection;
     for my $dir (qw(up down)) {
         print "rate_$dir.value " . $cs->{"rate_$dir"} . "\n";
 
@@ -201,7 +193,7 @@ if ($mode eq 'temp') {
     }
 } elsif ($mode eq 'freeplug') {
     GET_FREEPLUGS: {
-        my $fps = get_freebox()->get_all_freeplugs();
+        my $fps = $fb->freeplugs_net;
 
         my @stations = grep { $_->{net_role} eq 'sta' } @$fps;
 
