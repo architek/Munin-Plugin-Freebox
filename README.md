@@ -16,7 +16,7 @@ is required for this plugin to function and can be installed from CPAN.
     ln -s freebox_ freebox_freeplug
     ln -s freebox_ freebox_temp
 
-    ./freebox_ autoconf
+    munin-run --debug freebox_bandwidth autoconf
 
 And add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
 

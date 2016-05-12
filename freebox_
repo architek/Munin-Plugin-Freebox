@@ -18,7 +18,7 @@ is required for this plugin to function and can be installed from CPAN.
  ln -s freebox_ freebox_freeplug
  ln -s freebox_ freebox_temp
 
- ./freebox_ autoconf
+ munin-run --debug freebox_bandwidth autoconf
 
 And add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
 
@@ -155,7 +155,7 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
             print "$t.critical 90\n";
         }
     } elsif ($mode eq 'bandwidth') {
-        print "graph_title Bandwidth\n";
+        print "graph_title Freebox bandwidth\n";
         print "graph_vlabel Byte / second\n";
 
         for my $what (qw(bandwidth rate)) {
@@ -164,10 +164,10 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
             }
         }
     } elsif ($mode eq 'freeplug') {
-        print "graph_title Connection speed\n";
+        print "graph_title Freeplugs connection speed\n";
         print "graph_vlabel Mbit / second\n";
 
-        my $fps = get_freebox()->get_all_freeplugs();
+        my $fps = get_freebox->freeplugs_net->[0]->{members};
 
         # Take just the stations as coordinator freeplugs don't have tx/rx stats.
         my @stations = grep { $_->{net_role} eq 'sta' } @$fps;
