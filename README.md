@@ -15,10 +15,11 @@ is required for this plugin to function and can be installed from CPAN.
     ln -s freebox_ freebox_bandwidth
     ln -s freebox_ freebox_freeplug
     ln -s freebox_ freebox_temp
+    ln -s freebox_ freebox_switch1   # to monitor port 1 of switch
 
     munin-run --debug freebox_bandwidth autoconf
 
-And add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
+Add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
 
     [freebox_*]
     env.app_token value-of-the-token
@@ -29,6 +30,7 @@ Check everything is working with
     munin-run --debug freebox_bandwidth
     munin-run --debug freebox_freeplug
     munin-run --debug freebox_temp
+    munin-run --debug freebox_switch1
 
 # USAGE
 
