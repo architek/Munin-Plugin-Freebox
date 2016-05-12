@@ -207,7 +207,7 @@ if ($mode eq 'temp') {
     }
 } elsif ($mode eq 'freeplug') {
     GET_FREEPLUGS: {
-        my $fps = $fb->freeplugs_net;
+        my $fps = $fb->freeplugs_net->[0]{members};
 
         my @stations = grep { $_->{net_role} eq 'sta' } @$fps;
 
