@@ -12,24 +12,23 @@ is required for this plugin to function and can be installed from CPAN.
     cp freebox_ /etc/munin/plugins
 
     cd /etc/munin/plugins
-
     ln -s freebox_ freebox_bandwidth
     ln -s freebox_ freebox_freeplug
     ln -s freebox_ freebox_temp
 
-To configure, run autoconf
- ./freebox\_ autoconf
+    ./freebox_ autoconf
 
-And add a freebox section in /etc/munin/plugin-conf.d/munin-node as follow
+And add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
 
     [freebox_*]
     env.app_token value-of-the-token
     env.track_id value-of-the-track_id
 
 Check everything is working with
- munin-run --debug freebox\_bandwidth
- munin-run --debug freebox\_freeplug
- munin-run --debug freebox\_temp
+
+    munin-run --debug freebox_bandwidth
+    munin-run --debug freebox_freeplug
+    munin-run --debug freebox_temp
 
 # USAGE
 
