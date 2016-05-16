@@ -17,6 +17,14 @@ is required for this plugin to function and can be installed from CPAN.
     ln -s freebox_ freebox_temp
     ln -s freebox_ freebox_switch1   # to monitor port 1 of switch
 
+If you want to use a multi graph, simply
+
+    ln -s freebox_ freebox_multi
+
+In multi mode, the script will be called only once to display bandwidth, freeplug, temp and the 4 switch ports.
+
+Now auto configure. This will request app\_token and track\_id from the Freebox itself.
+
     munin-run --debug freebox_bandwidth autoconf
 
 Add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provided

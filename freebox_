@@ -19,6 +19,15 @@ is required for this plugin to function and can be installed from CPAN.
  ln -s freebox_ freebox_temp
  ln -s freebox_ freebox_switch1   # to monitor port 1 of switch
 
+If you want to use a multi graph, simply
+
+ ln -s freebox_ freebox_multi
+
+In multi mode, the script will be called only once to display bandwidth, freeplug, temp and the 4 switch ports.
+
+
+Now auto configure. This will request app_token and track_id from the Freebox itself.
+
  munin-run --debug freebox_bandwidth autoconf
 
 Add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
@@ -122,7 +131,7 @@ EOF
 }
 
 
-my @modes = ('temp', 'bandwidth', 'freeplug', 'snr', map{"switch$_"} 1..4 );
+my @modes = ('temp', 'bandwidth', 'freeplug', 'snr', map{"switch$_"} 1..4, 'multi');
 my $switch_port;
 
 if (defined $ARGV[0] and $ARGV[0] eq 'suggest') {
@@ -147,41 +156,53 @@ my %temps = (
     );
 
 if (defined $ARGV[0] and $ARGV[0] eq 'config') {
-    print "graph_category freebox\n";
 
-    if ($mode eq 'temp') {
+    if ($mode eq 'temp' or $mode eq 'multi') {
+        print "multigraph freebox_temp\n" if $mode eq 'multi';
         print "graph_args --base 1000 -l 0\n";
         print "graph_title Freebox temperatures\n";
         print "graph_vlabel degrees Celsius\n";
+        print "graph_category freebox\n";
 
         for my $t (keys %temps) {
             print "$t.label $temps{$t}\n";
             print "$t.warning 80\n";
             print "$t.critical 90\n";
         }
-    } elsif ($mode eq 'bandwidth') {
+    }
+    if ($mode eq 'bandwidth' or $mode eq 'multi') {
+        print "multigraph freebox_bandwidth\n" if $mode eq 'multi';
         print "graph_title Freebox bandwidth\n";
         print "graph_vlabel Byte / second\n";
+        print "graph_category freebox\n";
 
         for my $what (qw(bandwidth rate)) {
             for my $dir (qw(up down)) {
                 print "${what}_${dir}.label $what $dir\n"
             }
         }
-    } elsif ($mode =~ /^switch/) {
-        print "graph_title Freebox port $switch_port\n";
-        print "graph_vlabel Byte / second\n";
-
-        print "switch_rx.label RX rate\n";
-        print "switch_tx.label TX rate\n";
-
-    } elsif ($mode eq 'snr') {
+    }
+    if ($mode =~ /^switch/ or $mode eq 'multi') {
+        for my $switch ( $mode eq 'multi' ? (1..4):($switch_port) ) {
+            print "multigraph freebox_switch_$switch\n" if $mode eq 'multi';
+            print "graph_title Freebox port $switch\n";
+            print "graph_vlabel Byte / second\n";
+            print "switch_rx.label RX rate\n";
+            print "switch_tx.label TX rate\n";
+            print "graph_category freebox\n";
+        }
+    }
+    if ($mode eq 'snr' or $mode eq 'multi') {
+        print "multigraph freebox_snr\n" if $mode eq 'multi';
         print "graph_title Freebox Signal Noise Ratio\n";
         print "graph_vlabel dB\n";
 
         print "snr_up.label SNR up\n";
         print "snr_down.label SNR down\n";
-    } elsif ($mode eq 'freeplug') {
+        print "graph_category freebox\n";
+    }
+    if ($mode eq 'freeplug' or $mode eq 'multi') {
+        print "multigraph freebox_freeplug\n" if $mode eq 'multi';
         print "graph_title Freeplugs connection speed\n";
         print "graph_vlabel Mbit / second\n";
 
@@ -201,63 +222,80 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
                 print "freeplug${fpnum}_tx.label transmit speed for station $fpnum\n";
             }
         }
+        print "graph_category freebox\n";
     }
 
     exit 0
 }
 
+sub put_val {
+    my ($fb, $what) = @_;
+    if ($what eq 'temp') {
+        my $sc = $fb->system;
+        for my $t (keys %temps) {
+            print "$t.value " . $sc->{"temp_$t"} . "\n";
+        }
+    } elsif ($what eq 'bandwidth') {
+        my $cs = $fb->connection;
+        for my $dir (qw(up down)) {
+            print "rate_$dir.value " . $cs->{"rate_$dir"} . "\n";
+
+            # Those are in bit/s, translate to bytes.
+            print "bandwidth_$dir.value " . $cs->{"bandwidth_$dir"}/8 . "\n";
+        }
+    } elsif ($what eq 'snr') {
+        my $xs = $fb->connection_xdsl;
+        print "snr_up.value " . $xs->{up}{snr_10}/10 . "\n";
+        print "snr_down.value " . $xs->{down}{snr_10}/10 . "\n";
+    } elsif ($what =~ /^switch/) {
+        my $switch_n;
+        if ( $mode eq 'multi' ) {
+            $switch_n = $1 if $what =~ /switch_(.*)/;
+        } else {
+            $switch_n = $switch_port;
+        }
+        my $ss = $fb->switch_port("$switch_n/stats");
+        print "switch_rx.value " . $ss->{rx_bytes_rate} . "\n";
+        print "switch_tx.value " . $ss->{tx_bytes_rate} . "\n";
+    } elsif ($what eq 'freeplug') {
+        GET_FREEPLUGS: {
+            my $fps = $fb->freeplugs_net->[0]{members};
+
+            my @stations = grep { $_->{net_role} eq 'sta' } @$fps;
+
+            last if !@stations;
+
+            # Freeplug stats are invalid if it's not used, so query it once
+            # again if it was inactive for some time, this is typically enough
+            # to wake it up and get something meaningful from it.
+            my $fp = $stations[0];
+            redo GET_FREEPLUGS if $fp->{rx_rate} == -1 or $fp->{tx_rate} == -1;
+
+            if (@stations == 1) {
+                print "freeplug_rx.value " . $fp->{rx_rate} . "\n";
+                print "freeplug_tx.value " . $fp->{tx_rate} . "\n";
+            } else {
+                my $fpnum = 1;
+                for $fp (@stations) {
+                    print "freeplug${fpnum}_rx.value " . $fp->{rx_rate} . "\n";
+                    print "freeplug${fpnum}_tx.value " . $fp->{tx_rate} . "\n";
+
+                    $fpnum++;
+                }
+            }
+        }
+    } elsif ($what eq 'multi') {
+        for my $graph ( qw/ temp bandwidth snr freeplug switch_1 switch_2 switch_3 switch_4 / ) {
+            print "multigraph freebox_$graph\n";
+            put_val($fb, $graph);
+        }
+
+    }
+}
+
 die "Usage: $0 [autoconf|config]\n" if @ARGV;
 
 my $fb = get_freebox;
-
-if ($mode eq 'temp') {
-    my $sc = $fb->system;
-    for my $t (keys %temps) {
-        print "$t.value " . $sc->{"temp_$t"} . "\n";
-    }
-} elsif ($mode eq 'bandwidth') {
-    my $cs = $fb->connection;
-    for my $dir (qw(up down)) {
-        print "rate_$dir.value " . $cs->{"rate_$dir"} . "\n";
-
-        # Those are in bit/s, translate to bytes.
-        print "bandwidth_$dir.value " . $cs->{"bandwidth_$dir"}/8 . "\n";
-    }
-} elsif ($mode eq 'snr') {
-    my $xs = $fb->connection_xdsl;
-    print "snr_up.value " . $xs->{up}{snr_10}/10 . "\n";
-    print "snr_down.value " . $xs->{down}{snr_10}/10 . "\n";
-} elsif ($mode =~ /^switch/) {
-    my $ss = $fb->switch_port("$switch_port/stats");
-    print "switch_rx.value " . $ss->{rx_bytes_rate} . "\n";
-    print "switch_tx.value " . $ss->{tx_bytes_rate} . "\n";
-} elsif ($mode eq 'freeplug') {
-    GET_FREEPLUGS: {
-        my $fps = $fb->freeplugs_net->[0]{members};
-
-        my @stations = grep { $_->{net_role} eq 'sta' } @$fps;
-
-        last if !@stations;
-
-        # Freeplug stats are invalid if it's not used, so query it once
-        # again if it was inactive for some time, this is typically enough
-        # to wake it up and get something meaningful from it.
-        my $fp = $stations[0];
-        redo GET_FREEPLUGS if $fp->{rx_rate} == -1 or $fp->{tx_rate} == -1;
-
-        if (@stations == 1) {
-            print "freeplug_rx.value " . $fp->{rx_rate} . "\n";
-            print "freeplug_tx.value " . $fp->{tx_rate} . "\n";
-        } else {
-            my $fpnum = 1;
-            for $fp (@stations) {
-                print "freeplug${fpnum}_rx.value " . $fp->{rx_rate} . "\n";
-                print "freeplug${fpnum}_tx.value " . $fp->{tx_rate} . "\n";
-
-                $fpnum++;
-            }
-        }
-    }
-}
+put_val($fb, $mode);
 
 exit 0
