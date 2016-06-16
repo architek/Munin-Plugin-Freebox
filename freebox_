@@ -17,13 +17,14 @@ is required for this plugin to function and can be installed from CPAN.
  ln -s freebox_ freebox_bandwidth
  ln -s freebox_ freebox_freeplug
  ln -s freebox_ freebox_temp
+ ln -s freebox_ freebox_uptime
  ln -s freebox_ freebox_switch1   # to monitor port 1 of switch
 
 If you want to use a multi graph, simply
 
  ln -s freebox_ freebox_multi
 
-In multi mode, the script will be called only once to display bandwidth, freeplug, temp and the 4 switch ports.
+In multi mode, the script will be called only once to display bandwidth, freeplug, temp, uptime and the 4 switch ports.
 
 
 Now auto configure. This will request app_token and track_id from the Freebox itself.
@@ -41,6 +42,7 @@ Check everything is working with
  munin-run --debug freebox_bandwidth
  munin-run --debug freebox_freeplug
  munin-run --debug freebox_temp
+ munin-run --debug freebox_uptime
  munin-run --debug freebox_switch1
 
 =head1 USAGE
@@ -131,7 +133,7 @@ EOF
 }
 
 
-my @modes = ('temp', 'bandwidth', 'freeplug', 'snr', map{"switch$_"} 1..4, 'multi');
+my @modes = ('temp', 'bandwidth', 'freeplug', 'snr', map({"switch$_"} 1..4), 'uptime', 'multi');
 my $switch_port;
 
 if (defined $ARGV[0] and $ARGV[0] eq 'suggest') {
@@ -201,6 +203,15 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "snr_down.label SNR down\n";
         print "graph_category freebox\n";
     }
+    if ($mode eq 'uptime' or $mode eq 'multi') {
+        print "multigraph freebox_uptime\n" if $mode eq 'multi';
+        print "graph_title Freebox Connection Uptime\n";
+        print "graph_vlabel days\n";
+
+        print "uptime.label uptime\n";
+        print "uptime.draw AREA\n";
+        print "graph_category freebox\n";
+    }
     if ($mode eq 'freeplug' or $mode eq 'multi') {
         print "multigraph freebox_freeplug\n" if $mode eq 'multi';
         print "graph_title Freeplugs connection speed\n";
@@ -247,6 +258,9 @@ sub put_val {
         my $xs = $fb->connection_xdsl;
         print "snr_up.value " . $xs->{up}{snr_10}/10 . "\n";
         print "snr_down.value " . $xs->{down}{snr_10}/10 . "\n";
+    } elsif ($what eq 'uptime') {
+        my $xs = $fb->connection_xdsl;
+        print "uptime.value " . int($xs->{status}{uptime}/(3600*24)) . "\n";
     } elsif ($what =~ /^switch/) {
         my $switch_n;
         if ( $mode eq 'multi' ) {
@@ -285,7 +299,7 @@ sub put_val {
             }
         }
     } elsif ($what eq 'multi') {
-        for my $graph ( qw/ temp bandwidth snr freeplug switch_1 switch_2 switch_3 switch_4 / ) {
+        for my $graph ( qw/ temp bandwidth snr freeplug switch_1 switch_2 switch_3 switch_4 uptime/ ) {
             print "multigraph freebox_$graph\n";
             put_val($fb, $graph);
         }
