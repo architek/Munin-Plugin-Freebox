@@ -133,7 +133,7 @@ EOF
 }
 
 
-my @modes = ('temp', 'bandwidth', 'freeplug', 'snr', map({"switch$_"} 1..4), 'uptime', 'multi');
+my @modes = ('temp', 'bandwidth', 'freeplug', 'snr', 'fec', map({"switch$_"} 1..4), 'uptime', 'multi');
 my $switch_port;
 
 if (defined $ARGV[0] and $ARGV[0] eq 'suggest') {
@@ -203,6 +203,15 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "snr_down.label SNR down\n";
         print "graph_category freebox\n";
     }
+    if ($mode eq 'fec' or $mode eq 'multi') {
+        print "multigraph freebox_fec\n" if $mode eq 'multi';
+        print "graph_title Freebox Forward Error Correction\n";
+        print "graph_vlabel number\n";
+
+        print "snr_up.label FEC up\n";
+        print "snr_down.label FEC down\n";
+        print "graph_category freebox\n";
+    }
     if ($mode eq 'uptime' or $mode eq 'multi') {
         print "multigraph freebox_uptime\n" if $mode eq 'multi';
         print "graph_title Freebox Connection Uptime\n";
@@ -260,6 +269,10 @@ sub put_val {
         my $xs = $fb->connection_xdsl;
         print "snr_up.value " . $xs->{up}{snr_10}/10 . "\n";
         print "snr_down.value " . $xs->{down}{snr_10}/10 . "\n";
+    } elsif ($what eq 'fec') {
+    my $xs = $fb->connection_xdsl;
+    print "fec_up.value " . $xs->{up}{fec} . "\n";
+    print "fec_down.value " . $xs->{down}{fec} . "\n";
     } elsif ($what eq 'uptime') {
         my $xs = $fb->connection_xdsl;
         printf "uptime.value %.2f\n" , $xs->{status}{uptime}/(3600*24);
@@ -301,7 +314,7 @@ sub put_val {
             }
         }
     } elsif ($what eq 'multi') {
-        for my $graph ( qw/ temp bandwidth snr freeplug switch_1 switch_2 switch_3 switch_4 uptime/ ) {
+        for my $graph ( qw/ temp bandwidth snr fec freeplug switch_1 switch_2 switch_3 switch_4 uptime/ ) {
             print "multigraph freebox_$graph\n";
             put_val($fb, $graph);
         }
