@@ -133,7 +133,7 @@ EOF
 }
 
 
-my @modes = ('temp', 'bandwidth', 'freeplug', 'snr', 'fec', map({"switch$_"} 1..4), 'uptime', 'multi');
+my @modes = ('temp', 'bandwidth', 'freeplug', 'snr', 'fec', 'attn', map({"switch$_"} 1..4), 'uptime', 'multi');
 my $switch_port;
 
 if (defined $ARGV[0] and $ARGV[0] eq 'suggest') {
@@ -201,6 +201,15 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
 
         print "snr_up.label SNR up\n";
         print "snr_down.label SNR down\n";
+        print "graph_category freebox\n";
+    }
+    if ($mode eq 'attn' or $mode eq 'multi') {
+        print "multigraph freebox_attn\n" if $mode eq 'multi';
+        print "graph_title Freebox Attenuation\n";
+        print "graph_vlabel dB\n";
+
+        print "attn_up.label Attenuation up\n";
+        print "attn_down.label Attenuation down\n";
         print "graph_category freebox\n";
     }
     if ($mode eq 'fec' or $mode eq 'multi') {
@@ -273,6 +282,10 @@ sub put_val {
         my $xs = $fb->connection_xdsl;
         print "fec_up.value " . $xs->{up}{fec} . "\n";
         print "fec_down.value " . $xs->{down}{fec} . "\n";
+    } elsif ($what eq 'attn') {
+        my $xs = $fb->connection_xdsl;
+        print "attn_up.value " . $xs->{up}{attn_10}/10 . "\n";
+        print "attn_down.value " . $xs->{down}{attn_10}/10 . "\n";
     } elsif ($what eq 'uptime') {
         my $xs = $fb->connection_xdsl;
         printf "uptime.value %.2f\n" , $xs->{status}{uptime}/(3600*24);
