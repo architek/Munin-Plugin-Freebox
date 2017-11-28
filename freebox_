@@ -14,12 +14,14 @@ is required for this plugin to function and can be installed from CPAN.
     apt install munin-node
     apt install munin #only if you intend to run munin on the same host
 
-    cd $HOME && git clone https://github.com/architek/Munin-Plugin-Freebox.git
+    cpan install WWW::FBX
+    git clone https://github.com/architek/Munin-Plugin-Freebox.git
 
-If you want to run the script as another user (recommended), make sure to have WWW::FBX in *system-wide* @INC or adapt the "use lib" line in the script if you use local::lib (recommended). System-wide INC is required as munin only changed EUID, RUID when changing user.
-To have munin use an other user, create a freebox section in /etc/munin/plugin-conf.d/munin-node
+If you want to run the script as another user (recommended), first, create a freebox section in /etc/munin/plugin-conf.d/munin-node
     [freebox_*]
     user lke
+
+Secondly, make sure to have WWW::FBX in *system-wide* @INC or adapt the "use lib" line in the script if you use local::lib (recommended). System-wide INC is required as munin only changed EUID, RUID when changing user.
 
 =head1 CONFIGURATION
 
