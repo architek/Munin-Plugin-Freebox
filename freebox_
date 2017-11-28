@@ -83,6 +83,7 @@ GPLv2
 use strict;
 use warnings;
 use Munin::Plugin;
+use lib "/home/lke/perl5/lib/perl5";  # If you use local::lib, change this to where WWW::FBX is installed
 
 my ($app_id, $app_name, $app_version, $device_name) = ('org.munin.plugin.freebox', 'Munin Freebox plugin', '2.0', 'PC');
 
@@ -119,7 +120,7 @@ if (defined $ARGV[0] and $ARGV[0] eq 'autoconf') {
         my $track_id = $fbx->track_id;
 
         print <<EOF
-Now configure a munin section as:
+Now add these lines to the munin node configuration (/etc/munin/plugin-conf.d/munin-node)
 [freebox_*]
 env.app_token $app_token
 env.track_id $track_id
@@ -128,7 +129,7 @@ EOF
     if ($error = $@) {
         $error = $error->error if Scalar::Util::blessed($error) and $error->isa('WWW::FBX::Error');
     }
-    print $error ? "no ($error)\n" : "yes\n";
+    print "Couldn't connect to Freebox error is $error\n" if $error;
     exit 0
 }
 
@@ -327,7 +328,7 @@ sub put_val {
             }
         }
     } elsif ($what eq 'multi') {
-        for my $graph ( qw/ temp bandwidth snr fec freeplug switch_1 switch_2 switch_3 switch_4 uptime/ ) {
+        for my $graph ( qw/ temp bandwidth snr fec attn freeplug uptime/ ) {
             print "multigraph freebox_$graph\n";
             put_val($fb, $graph);
         }
