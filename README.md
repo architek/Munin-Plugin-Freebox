@@ -7,27 +7,36 @@ freebox - Plugin for monitoring Freebox parameters.
 Any computer that has access to a Freebox v6. Perl module [WWW::FBX](https://metacpan.org/pod/WWW::FBX)
 is required for this plugin to function and can be installed from CPAN.
 
+# INSTALLATION
+
+    apt install munin-node
+    apt install munin #only if you intend to run munin on the same host
+
+    cd $HOME && git clone https://github.com/architek/Munin-Plugin-Freebox.git
+
+If you want to run the script as another user (recommended), make sure to have WWW::FBX in \*system-wide\* @INC or adapt the "use lib" line in the script if you use local::lib (recommended). System-wide INC is required as munin only changed EUID, RUID when changing user.
+To have munin use an other user, create a freebox section in /etc/munin/plugin-conf.d/munin-node
+    \[freebox\_\*\]
+    user lke
+
 # CONFIGURATION
 
-    cp freebox_ /etc/munin/plugins
+Create links of what you want to plot
 
-    cd /etc/munin/plugins
-    ln -s freebox_ freebox_bandwidth
-    ln -s freebox_ freebox_freeplug
-    ln -s freebox_ freebox_temp
-    ln -s freebox_ freebox_switch1   # to monitor port 1 of switch
+    sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_bandwidth
+    sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_freeplug
+    sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_temp
+    sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_switch1
 
-If you want to use a multi graph, simply
+Or use a multi graph call (the script will only be called once). By default are plotted: bandwidth, freeplug status, temperature, snr, fec, attn.
 
-    ln -s freebox_ freebox_multi
+    sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_
 
-In multi mode, the script will be called only once to display bandwidth, freeplug, temp and the 4 switch ports.
+Now auto configure. This will request app\\\_token and track\\\_id from the Freebox itself.
 
-Now auto configure. This will request app\_token and track\_id from the Freebox itself.
+    sudo munin-run --debug freebox_bandwidth autoconf
 
-    munin-run --debug freebox_bandwidth autoconf
-
-Add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
+Add or complete the freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
 
     [freebox_*]
     env.app_token value-of-the-token
