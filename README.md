@@ -12,12 +12,10 @@ is required for this plugin to function and can be installed from CPAN.
     apt install munin-node
     apt install munin #only if you intend to run munin on the same host
 
-    cd $HOME && git clone https://github.com/architek/Munin-Plugin-Freebox.git
+Keep in mind that WWW::FBX should be reachable from root user (either through local::lib or system install). Munin drops privileges with seteuid POSIX call.
 
-If you want to run the script as another user (recommended), make sure to have WWW::FBX in \*system-wide\* @INC or adapt the "use lib" line in the script if you use local::lib (recommended). System-wide INC is required as munin only changed EUID, RUID when changing user.
-To have munin use an other user, create a freebox section in /etc/munin/plugin-conf.d/munin-node
-    \[freebox\_\*\]
-    user lke
+    cpan install WWW::FBX
+    git clone https://github.com/architek/Munin-Plugin-Freebox.git
 
 # CONFIGURATION
 
@@ -28,17 +26,18 @@ Create links of what you want to plot
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_temp
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_switch1
 
-Or use a multi graph call (the script will only be called once). By default are plotted: bandwidth, freeplug status, temperature, snr, fec, attn.
+Or use a multi graph call (the script will only be called once). Adapt @multi array to select what to plot.
 
-    sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_
+    sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_multi
 
 Now auto configure. This will request app\\\_token and track\\\_id from the Freebox itself.
 
     sudo munin-run --debug freebox_bandwidth autoconf
 
-Add or complete the freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
+Add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
 
     [freebox_*]
+    user foo
     env.app_token value-of-the-token
     env.track_id value-of-the-track_id
 
