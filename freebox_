@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
 
+
 =head1 NAME
 
 freebox - Plugin for monitoring Freebox parameters.
@@ -14,14 +15,10 @@ is required for this plugin to function and can be installed from CPAN.
     apt install munin-node
     apt install munin #only if you intend to run munin on the same host
 
+Keep in mind that WWW::FBX should be reachable from root user (either through local::lib or system install). Munin drops privileges with seteuid POSIX call.
+
     cpan install WWW::FBX
     git clone https://github.com/architek/Munin-Plugin-Freebox.git
-
-If you want to run the script as another user (recommended), first, create a freebox section in /etc/munin/plugin-conf.d/munin-node
-    [freebox_*]
-    user lke
-
-Secondly, make sure to have WWW::FBX in *system-wide* @INC or adapt the "use lib" line in the script if you use local::lib (recommended). System-wide INC is required as munin only changed EUID, RUID when changing user.
 
 =head1 CONFIGURATION
 
@@ -32,17 +29,18 @@ Create links of what you want to plot
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_temp
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_switch1
 
-Or use a multi graph call (the script will only be called once). By default are plotted: bandwidth, freeplug status, temperature, snr, fec, attn.
+Or use a multi graph call (the script will only be called once). Adapt @multi array to select what to plot.
 
-    sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_
+    sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_multi
 
 Now auto configure. This will request app\_token and track\_id from the Freebox itself.
 
     sudo munin-run --debug freebox_bandwidth autoconf
 
-Add or complete the freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
+Add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
 
     [freebox_*]
+    user foo
     env.app_token value-of-the-token
     env.track_id value-of-the-track_id
 
@@ -91,9 +89,13 @@ GPLv2
 use strict;
 use warnings;
 use Munin::Plugin;
-use lib "/home/lke/perl5/lib/perl5";  # If you use local::lib, change this to where WWW::FBX is installed
+use WWW::FBX;
+
+my @multi = qw/ bandwidth up down snr fec attn uptime freeplug /;
 
 my ($app_id, $app_name, $app_version, $device_name) = ('org.munin.plugin.freebox', 'Munin Freebox plugin', '2.0', 'PC');
+my @modes = ('temp', 'bandwidth', 'up', 'down', 'freeplug', 'snr', 'fec', 'attn', map({"switch$_"} 1..4), 'uptime', 'multi');
+my $switch_port;
 
 sub get_freebox {
     if (!defined($ENV{app_token})) {
@@ -106,7 +108,6 @@ Please autoconf the plugin and fill in your configuration app_token
 to use this plugin.
 EOF
     }
-    use WWW::FBX;
     WWW::FBX->new(
                 app_id => $app_id,
                 app_name => $app_name,
@@ -142,9 +143,6 @@ EOF
 }
 
 
-my @modes = ('temp', 'bandwidth', 'freeplug', 'snr', 'fec', 'attn', map({"switch$_"} 1..4), 'uptime', 'multi');
-my $switch_port;
-
 if (defined $ARGV[0] and $ARGV[0] eq 'suggest') {
     print "$_\n" for @modes;
 
@@ -158,6 +156,8 @@ if ($0 !~ /freebox_(.+)*$/ or !grep $1, @modes) {
 
 my $mode = $1;
 
+my %is_multi = map { $_ => 1 } @multi;
+
 $switch_port = $1 if $0 =~ /freebox_switch(.*)/;
 
 my %temps = (
@@ -166,9 +166,14 @@ my %temps = (
         sw   => 'switch',
     );
 
+sub shall_print {
+  my ($mode, $pat) = @_;
+  $mode eq $pat or $is_multi{$pat}  ? 1:0;
+}
+
 if (defined $ARGV[0] and $ARGV[0] eq 'config') {
 
-    if ($mode eq 'temp' or $mode eq 'multi') {
+    if ( shall_print( $mode, 'temp' ) ){
         print "multigraph freebox_temp\n" if $mode eq 'multi';
         print "graph_args --base 1000 -l 0\n";
         print "graph_title Freebox temperatures\n";
@@ -181,7 +186,7 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
             print "$t.critical 90\n";
         }
     }
-    if ($mode eq 'bandwidth' or $mode eq 'multi') {
+    if ( shall_print( $mode, 'bandwidth' ) ){
         print "multigraph freebox_bandwidth\n" if $mode eq 'multi';
         print "graph_title Freebox bandwidth\n";
         print "graph_vlabel Byte / second\n";
@@ -193,7 +198,21 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
             }
         }
     }
-    if ($mode =~ /^switch/ or $mode eq 'multi') {
+    if ( shall_print( $mode, 'up' ) ){
+        print "multigraph freebox_up\n" if $mode eq 'multi';
+        print "graph_title Freebox bandwidth uplink\n";
+        print "graph_vlabel Byte / second\n";
+        print "graph_category freebox\n";
+        print "rate_up.label rate up\n";
+    }
+    if ( shall_print( $mode, 'down' ) ){
+        print "multigraph freebox_down\n" if $mode eq 'multi';
+        print "graph_title Freebox bandwidth downlink\n";
+        print "graph_vlabel Byte / second\n";
+        print "graph_category freebox\n";
+        print "rate_down.label rate down\n";
+    }
+    if ( $mode =~ /^switch/ or $is_multi{switch} ) {
         for my $switch ( $mode eq 'multi' ? (1..4):($switch_port) ) {
             print "multigraph freebox_switch_$switch\n" if $mode eq 'multi';
             print "graph_title Freebox port $switch\n";
@@ -203,7 +222,7 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
             print "graph_category freebox\n";
         }
     }
-    if ($mode eq 'snr' or $mode eq 'multi') {
+    if ( shall_print( $mode, 'snr' ) ){
         print "multigraph freebox_snr\n" if $mode eq 'multi';
         print "graph_title Freebox Signal Noise Ratio\n";
         print "graph_vlabel dB\n";
@@ -212,7 +231,7 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "snr_down.label SNR down\n";
         print "graph_category freebox\n";
     }
-    if ($mode eq 'attn' or $mode eq 'multi') {
+    if ( shall_print( $mode, 'attn' ) ){
         print "multigraph freebox_attn\n" if $mode eq 'multi';
         print "graph_title Freebox Attenuation\n";
         print "graph_vlabel dB\n";
@@ -221,16 +240,17 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "attn_down.label Attenuation down\n";
         print "graph_category freebox\n";
     }
-    if ($mode eq 'fec' or $mode eq 'multi') {
+    if ( shall_print( $mode, 'fec' ) ){
         print "multigraph freebox_fec\n" if $mode eq 'multi';
         print "graph_title Freebox Forward Error Correction\n";
-        print "graph_vlabel number\n";
-
+        print "graph_vlabel number/min\n";
+        print "fec_up.type DERIVE\n";
+        print "fec_down.type DERIVE\n";
         print "fec_up.label FEC up\n";
         print "fec_down.label FEC down\n";
         print "graph_category freebox\n";
     }
-    if ($mode eq 'uptime' or $mode eq 'multi') {
+    if ( shall_print( $mode, 'uptime' ) ){
         print "multigraph freebox_uptime\n" if $mode eq 'multi';
         print "graph_title Freebox Connection Uptime\n";
         print "graph_vlabel days\n";
@@ -241,7 +261,7 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "uptime.draw AREA\n";
         print "graph_category freebox\n";
     }
-    if ($mode eq 'freeplug' or $mode eq 'multi') {
+    if ( shall_print( $mode, 'freeplug' ) ){
         print "multigraph freebox_freeplug\n" if $mode eq 'multi';
         print "graph_title Freeplugs connection speed\n";
         print "graph_vlabel Mbit / second\n";
@@ -283,14 +303,20 @@ sub put_val {
             # Those are in bit/s, translate to bytes.
             print "bandwidth_$dir.value " . $cs->{"bandwidth_$dir"}/8 . "\n";
         }
+    } elsif ($what eq 'up') {
+        my $cs = $fb->connection;
+        print "rate_up.value " . $cs->{"rate_up"} . "\n";
+    } elsif ($what eq 'down') {
+        my $cs = $fb->connection;
+        print "rate_down.value " . $cs->{"rate_down"} . "\n";
     } elsif ($what eq 'snr') {
         my $xs = $fb->connection_xdsl;
         print "snr_up.value " . $xs->{up}{snr_10}/10 . "\n";
         print "snr_down.value " . $xs->{down}{snr_10}/10 . "\n";
     } elsif ($what eq 'fec') {
         my $xs = $fb->connection_xdsl;
-        print "fec_up.value " . $xs->{up}{fec} . "\n";
-        print "fec_down.value " . $xs->{down}{fec} . "\n";
+        print "fec_up.value " . $xs->{up}{fec}*60 . "\n";
+        print "fec_down.value " . $xs->{down}{fec}*60 . "\n";
     } elsif ($what eq 'attn') {
         my $xs = $fb->connection_xdsl;
         print "attn_up.value " . $xs->{up}{attn_10}/10 . "\n";
@@ -336,7 +362,7 @@ sub put_val {
             }
         }
     } elsif ($what eq 'multi') {
-        for my $graph ( qw/ temp bandwidth snr fec attn freeplug uptime/ ) {
+        for my $graph ( @multi ) {
             print "multigraph freebox_$graph\n";
             put_val($fb, $graph);
         }
