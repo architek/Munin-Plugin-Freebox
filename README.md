@@ -60,8 +60,6 @@ to see all the possible operation modes and create a symlink called
 
 Copyright 2014 Vadim Zeitlin <vz-cpan@zeitlins.org>
 
-Modified by Laurent Kislaire
-
 # LICENSE
 
 GPLv2
@@ -70,8 +68,3 @@ GPLv2
 
 - 2014-07-19 Initial version.
 - 2016-05-11 Modified.
-
-# MAGIC MARKERS
-
-    #%# family=manual
-    #%# capabilities=autoconf suggest

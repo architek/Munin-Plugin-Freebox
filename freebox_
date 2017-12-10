@@ -63,8 +63,6 @@ C<freebox_temp>.
 
 Copyright 2014 Vadim Zeitlin <vz-cpan@zeitlins.org>
 
-Modified by Laurent Kislaire
-
 =head1 LICENSE
 
 GPLv2
@@ -79,11 +77,6 @@ GPLv2
 
 =back
 
-=head1 MAGIC MARKERS
-
- #%# family=manual
- #%# capabilities=autoconf suggest
-
 =cut
 
 use strict;
@@ -91,10 +84,15 @@ use warnings;
 use Munin::Plugin;
 use WWW::FBX;
 
-my @multi = qw/ bandwidth up down snr fec attn uptime freeplug /;
+my @multi;
 
-my ($app_id, $app_name, $app_version, $device_name) = ('org.munin.plugin.freebox', 'Munin Freebox plugin', '2.0', 'PC');
-my @modes = ('temp', 'bandwidth', 'up', 'down', 'freeplug', 'snr', 'fec', 'attn', map({"switch$_"} 1..4), 'uptime', 'multi');
+#line stats
+@multi = qw/ uptime bandwidth fec_up fec_down snr up down/;
+#full
+@multi = qw/ fec uptime bandwidth fec_up fec_down snr up down freeplug attn switch_1 switch_2 switch_3 switch_4 temp btrate_up btrate_down comb_down comb_up/;
+
+my ($app_id, $app_name, $app_version, $device_name) = ('APP ID', 'APP NAME', '1.0', 'debian');
+my @modes = ( @multi, 'multi' );
 my $switch_port;
 
 sub get_freebox {
@@ -168,7 +166,7 @@ my %temps = (
 
 sub shall_print {
   my ($mode, $pat) = @_;
-  $mode eq $pat or $is_multi{$pat}  ? 1:0;
+  $mode eq $pat or $is_multi{$pat} ? 1:0;
 }
 
 if (defined $ARGV[0] and $ARGV[0] eq 'config') {
@@ -190,26 +188,54 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "multigraph freebox_bandwidth\n" if $mode eq 'multi';
         print "graph_title Freebox bandwidth\n";
         print "graph_vlabel Byte / second\n";
-        print "graph_category freebox\n";
-
-        for my $what (qw(bandwidth rate)) {
-            for my $dir (qw(up down)) {
-                print "${what}_${dir}.label $what $dir\n"
-            }
-        }
+        print "graph_category xdsl\n";
+        print "bandwidth_up.label bandwidth up\n";
+        print "bandwidth_down.label bandwidth down\n";
+    }
+    if ( shall_print( $mode, 'comb_down' ) ){
+        print "multigraph freebox_comb_down\n" if $mode eq 'multi';
+        print "graph_title Freebox Combined down rate\n";
+        print "graph_vlabel Byte / second\n";
+        print "graph_category bandwidth\n";
+        print "rate_down.label rate down\n";
+        print "btrate_down.label bittorrent down\n";
+    }
+    if ( shall_print( $mode, 'comb_up' ) ){
+        print "multigraph freebox_comb_up\n" if $mode eq 'multi';
+        print "graph_title Freebox Combined up rate\n";
+        print "graph_vlabel Byte / second\n";
+        print "graph_category bandwidth\n";
+        print "rate_up.label rate up\n";
+        print "btrate_up.label bittorrent up\n";
+    }
+    if ( shall_print( $mode, 'btrate_up' ) ){
+        print "multigraph freebox_btrate_up\n" if $mode eq 'multi';
+        print "graph_title Freebox Bittorrent up rate\n";
+        print "graph_vlabel Byte / second\n";
+        print "graph_category bandwidth\n";
+        print "btrate_up.label bittorrent up\n";
+        print "btrate_upthr.label bittorrent up throttle\n";
+    }
+    if ( shall_print( $mode, 'btrate_down' ) ){
+        print "multigraph freebox_btrate_down\n" if $mode eq 'multi';
+        print "graph_title Freebox Bittorrent down rate\n";
+        print "graph_vlabel Byte / second\n";
+        print "graph_category bandwidth\n";
+        print "btrate_down.label bittorrent down\n";
+        print "btrate_downthr.label bittorrent down throttle\n";
     }
     if ( shall_print( $mode, 'up' ) ){
         print "multigraph freebox_up\n" if $mode eq 'multi';
         print "graph_title Freebox bandwidth uplink\n";
         print "graph_vlabel Byte / second\n";
-        print "graph_category freebox\n";
+        print "graph_category bandwidth\n";
         print "rate_up.label rate up\n";
     }
     if ( shall_print( $mode, 'down' ) ){
         print "multigraph freebox_down\n" if $mode eq 'multi';
         print "graph_title Freebox bandwidth downlink\n";
         print "graph_vlabel Byte / second\n";
-        print "graph_category freebox\n";
+        print "graph_category bandwidth\n";
         print "rate_down.label rate down\n";
     }
     if ( $mode =~ /^switch/ or $is_multi{switch} ) {
@@ -219,26 +245,24 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
             print "graph_vlabel Byte / second\n";
             print "switch_rx.label RX rate\n";
             print "switch_tx.label TX rate\n";
-            print "graph_category freebox\n";
+            print "graph_category localnet\n";
         }
     }
     if ( shall_print( $mode, 'snr' ) ){
         print "multigraph freebox_snr\n" if $mode eq 'multi';
         print "graph_title Freebox Signal Noise Ratio\n";
         print "graph_vlabel dB\n";
-
         print "snr_up.label SNR up\n";
         print "snr_down.label SNR down\n";
-        print "graph_category freebox\n";
+        print "graph_category xdsl\n";
     }
     if ( shall_print( $mode, 'attn' ) ){
         print "multigraph freebox_attn\n" if $mode eq 'multi';
         print "graph_title Freebox Attenuation\n";
         print "graph_vlabel dB\n";
-
         print "attn_up.label Attenuation up\n";
         print "attn_down.label Attenuation down\n";
-        print "graph_category freebox\n";
+        print "graph_category xdsl\n";
     }
     if ( shall_print( $mode, 'fec' ) ){
         print "multigraph freebox_fec\n" if $mode eq 'multi';
@@ -246,9 +270,29 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "graph_vlabel number/min\n";
         print "fec_up.type DERIVE\n";
         print "fec_down.type DERIVE\n";
+        print "fec_up.min 0\n";
+        print "fec_down.min 0\n";
         print "fec_up.label FEC up\n";
         print "fec_down.label FEC down\n";
-        print "graph_category freebox\n";
+        print "graph_category xdsl\n";
+    }
+    if ( shall_print( $mode, 'fec_up' ) ){
+        print "multigraph freebox_fec_up\n" if $mode eq 'multi';
+        print "graph_title Freebox Forward Error Correction Up\n";
+        print "graph_vlabel number/min\n";
+        print "fec_up.type DERIVE\n";
+        print "fec_up.min 0\n";
+        print "fec_up.label FEC up\n";
+        print "graph_category xdsl\n";
+    }
+    if ( shall_print( $mode, 'fec_down' ) ){
+        print "multigraph freebox_fec_down\n" if $mode eq 'multi';
+        print "graph_title Freebox Forward Error Correction Down\n";
+        print "graph_vlabel number/min\n";
+        print "fec_down.type DERIVE\n";
+        print "fec_down.min 0\n";
+        print "fec_down.label FEC down\n";
+        print "graph_category xdsl\n";
     }
     if ( shall_print( $mode, 'uptime' ) ){
         print "multigraph freebox_uptime\n" if $mode eq 'multi';
@@ -256,7 +300,6 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "graph_vlabel days\n";
         print "graph_args --base 1000 -l 0\n";
         print "graph_scale no\n";
-
         print "uptime.label uptime\n";
         print "uptime.draw AREA\n";
         print "graph_category freebox\n";
@@ -265,26 +308,26 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "multigraph freebox_freeplug\n" if $mode eq 'multi';
         print "graph_title Freeplugs connection speed\n";
         print "graph_vlabel Mbit / second\n";
+        print "graph_category localnet\n";
+        if ( get_freebox->freeplugs_net ) {
+          my $fps = get_freebox->freeplugs_net->[0]->{members};
 
-        my $fps = get_freebox->freeplugs_net->[0]->{members};
+          # Take just the stations as coordinator freeplugs don't have tx/rx stats.
+          my @stations = grep { $_->{net_role} eq 'sta' } @$fps;
 
-        # Take just the stations as coordinator freeplugs don't have tx/rx stats.
-        my @stations = grep { $_->{net_role} eq 'sta' } @$fps;
-
-        if (@stations <= 1) {
-            print "freeplug_rx.label receive speed\n";
-            print "freeplug_tx.label transmit speed\n";
-        } else {
-            # If we have more than one station, number them to allow
-            # distinguishing between them.
-            for (my $fpnum = 1; $fpnum <= @stations; $fpnum++) {
-                print "freeplug${fpnum}_rx.label receive speed for station $fpnum\n";
-                print "freeplug${fpnum}_tx.label transmit speed for station $fpnum\n";
-            }
+          if (@stations <= 1) {
+              print "freeplug_rx.label receive speed\n";
+              print "freeplug_tx.label transmit speed\n";
+          } else {
+              # If we have more than one station, number them to allow
+              # distinguishing between them.
+              for (my $fpnum = 1; $fpnum <= @stations; $fpnum++) {
+                  print "freeplug${fpnum}_rx.label receive speed for station $fpnum\n";
+                  print "freeplug${fpnum}_tx.label transmit speed for station $fpnum\n";
+              }
+          }
         }
-        print "graph_category freebox\n";
-    }
-
+      }
     exit 0
 }
 
@@ -294,37 +337,66 @@ sub put_val {
         my $sc = $fb->system;
         for my $t (keys %temps) {
             print "$t.value " . $sc->{"temp_$t"} . "\n";
+          }
         }
-    } elsif ($what eq 'bandwidth') {
+    if ($what eq 'bandwidth') {
         my $cs = $fb->connection;
-        for my $dir (qw(up down)) {
-            print "rate_$dir.value " . $cs->{"rate_$dir"} . "\n";
-
-            # Those are in bit/s, translate to bytes.
-            print "bandwidth_$dir.value " . $cs->{"bandwidth_$dir"}/8 . "\n";
-        }
-    } elsif ($what eq 'up') {
+        print "bandwidth_up.value " . $cs->{"bandwidth_up"}/8 . "\n";
+        print "bandwidth_down.value " . $cs->{"bandwidth_down"}/8 . "\n";
+      }
+    if ($what eq 'comb_up') {
+        my $ds = $fb->downloads_stats;
         my $cs = $fb->connection;
         print "rate_up.value " . $cs->{"rate_up"} . "\n";
-    } elsif ($what eq 'down') {
+        print "btrate_up.value " . $ds->{"rx_rate"} . "\n";
+      }
+    if ($what eq 'comb_down') {
+        my $ds = $fb->downloads_stats;
         my $cs = $fb->connection;
         print "rate_down.value " . $cs->{"rate_down"} . "\n";
-    } elsif ($what eq 'snr') {
+        print "btrate_down.value " . $ds->{"tx_rate"} . "\n";
+      }
+    if ($what eq 'btrate_up') {
+        my $ds = $fb->downloads_stats;
+        print "btrate_up.value " . $ds->{"tx_rate"} . "\n";
+        print "btrate_upthr.value " . $ds->{"throttling_rate"}{"tx_rate"} . "\n";
+      }
+    if ($what eq 'btrate_down') {
+        my $ds = $fb->downloads_stats;
+        print "btrate_down.value " . $ds->{"rx_rate"} . "\n";
+        print "btrate_downthr.value " . $ds->{"throttling_rate"}{"rx_rate"} . "\n";
+      }
+    if ( $what eq 'up' ) {
+        my $cs = $fb->connection;
+        print "rate_up.value " . $cs->{"rate_up"} . "\n";
+      }
+    if ($what eq 'down' ) {
+        my $cs = $fb->connection;
+        print "rate_down.value " . $cs->{"rate_down"} . "\n";
+      }
+    if ($what eq 'snr') {
         my $xs = $fb->connection_xdsl;
         print "snr_up.value " . $xs->{up}{snr_10}/10 . "\n";
         print "snr_down.value " . $xs->{down}{snr_10}/10 . "\n";
-    } elsif ($what eq 'fec') {
+      }
+    if ($what eq 'fec_up' or $what eq 'fec') {
         my $xs = $fb->connection_xdsl;
         print "fec_up.value " . $xs->{up}{fec}*60 . "\n";
+      }
+    if ($what eq 'fec_down' or $what eq 'fec') {
+        my $xs = $fb->connection_xdsl;
         print "fec_down.value " . $xs->{down}{fec}*60 . "\n";
-    } elsif ($what eq 'attn') {
+      }
+    if ($what eq 'attn') {
         my $xs = $fb->connection_xdsl;
         print "attn_up.value " . $xs->{up}{attn_10}/10 . "\n";
         print "attn_down.value " . $xs->{down}{attn_10}/10 . "\n";
-    } elsif ($what eq 'uptime') {
+      }
+    if ($what eq 'uptime') {
         my $xs = $fb->connection_xdsl;
         printf "uptime.value %.2f\n" , $xs->{status}{uptime}/(3600*24);
-    } elsif ($what =~ /^switch/) {
+      }
+    if ($what =~ /^switch/) {
         my $switch_n;
         if ( $mode eq 'multi' ) {
             $switch_n = $1 if $what =~ /switch_(.*)/;
@@ -334,7 +406,9 @@ sub put_val {
         my $ss = $fb->switch_port("$switch_n/stats");
         print "switch_rx.value " . $ss->{rx_bytes_rate} . "\n";
         print "switch_tx.value " . $ss->{tx_bytes_rate} . "\n";
-    } elsif ($what eq 'freeplug') {
+      }
+    if ($what eq 'freeplug' and $fb->freeplugs_net ) {
+        my $try;
         GET_FREEPLUGS: {
             my $fps = $fb->freeplugs_net->[0]{members};
 
@@ -346,7 +420,7 @@ sub put_val {
             # again if it was inactive for some time, this is typically enough
             # to wake it up and get something meaningful from it.
             my $fp = $stations[0];
-            redo GET_FREEPLUGS if $fp->{rx_rate} == -1 or $fp->{tx_rate} == -1;
+            redo GET_FREEPLUGS if ++$try < 10 and $fp->{rx_rate} == -1 or $fp->{tx_rate} == -1;
 
             if (@stations == 1) {
                 print "freeplug_rx.value " . $fp->{rx_rate} . "\n";
@@ -361,12 +435,12 @@ sub put_val {
                 }
             }
         }
-    } elsif ($what eq 'multi') {
+      }
+    if ($what eq 'multi') {
         for my $graph ( @multi ) {
             print "multigraph freebox_$graph\n";
             put_val($fb, $graph);
         }
-
     }
 }
 
@@ -376,3 +450,6 @@ my $fb = get_freebox;
 put_val($fb, $mode);
 
 exit 0
+#%# family=manual
+#%# capabilities=autoconf suggest
+
