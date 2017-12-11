@@ -22,7 +22,7 @@ Keep in mind that WWW::FBX should be reachable from root user (either through lo
 
 =head1 CONFIGURATION
 
-Recommended way: Use a multi graph call (the script will only be called once). Adapt @multi array to select what to plot.
+Recommended way is to limit connections to the freebox: Use a multi graph call. Adapt @multi array to select what to plot.
 
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_multi
 
