@@ -93,9 +93,9 @@ my @multi;
 #line stats
 @multi = qw/ uptime bandwidth fec_up fec_down snr up down/;
 #full
-@multi = qw/ fec uptime bandwidth fec_up fec_down snr up down freeplug attn switch1 switch2 switch3 switch4 temp btrate_up btrate_down comb_down comb_up/;
+@multi = qw/ fec uptime bandwidth fec_up fec_down snr rate up down freeplug attn switch1 switch2 switch3 switch4 temp btrate_up btrate_down comb_down comb_up/;
 #full nobt
-@multi = qw/ fec uptime bandwidth fec_up fec_down snr up down freeplug attn temp switch1 switch2 switch3 switch4/;
+@multi = qw/ fec uptime bandwidth snr rate freeplug attn temp switch1 switch2 switch3 switch4/;
 
 my ($app_id, $app_name, $app_version, $device_name) = ('APP ID', 'APP NAME', '1.0', 'debian');
 my @modes = ( @multi, 'multi' );
@@ -195,8 +195,8 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "graph_title Freebox bandwidth\n";
         print "graph_vlabel Byte / second\n";
         print "graph_category xdsl\n";
-        print "bandwidth_up.label bandwidth up\n";
-        print "bandwidth_down.label bandwidth down\n";
+        print "bandwidth_down.label bandwidth down (+)\n";
+        print "bandwidth_up.label bandwidth up (-)\n";
     }
     if ( shall_print( $mode, 'comb_down' ) ){
         print "multigraph freebox_comb_down\n" if $mode eq 'multi';
@@ -230,9 +230,19 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "btrate_down.label bittorrent down\n";
         print "btrate_downthr.label bittorrent down throttle\n";
     }
+    if ( shall_print( $mode, 'rate' ) ){
+        print "multigraph freebox_rate\n" if $mode eq 'multi';
+        print "graph_title Freebox bandwidth uplink\n";
+        print "graph_vlabel Byte / second\n";
+        print "graph_category bandwidth\n";
+        print "rate_down.label rate down\n";
+        print "rate_down.draw AREA\n";
+        print "rate_up.label rate up\n";
+        print "rate_up.draw AREA\n";
+    }
     if ( shall_print( $mode, 'up' ) ){
         print "multigraph freebox_up\n" if $mode eq 'multi';
-        print "graph_title Freebox bandwidth uplink\n";
+        print "graph_title Freebox rate uplink\n";
         print "graph_vlabel Byte / second\n";
         print "graph_category bandwidth\n";
         print "rate_up.label rate up\n";
@@ -240,19 +250,21 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
     }
     if ( shall_print( $mode, 'down' ) ){
         print "multigraph freebox_down\n" if $mode eq 'multi';
-        print "graph_title Freebox bandwidth downlink\n";
+        print "graph_title Freebox rate downlink\n";
         print "graph_vlabel Byte / second\n";
         print "graph_category bandwidth\n";
         print "rate_down.label rate down\n";
         print "rate_down.draw AREA\n";
     }
-    if ( $mode =~ /^switch[1-4]/ or $is_multi{switch} ) {
+    if ( $mode =~ /^switch[1-4]/ or $is_multi{switch1} ) {
         for my $switch ( $mode eq 'multi' ? (1..4):($switch_port) ) {
-            print "multigraph freebox_switch_$switch\n" if $mode eq 'multi';
-            print "graph_title Freebox port $switch\n";
+            print "multigraph freebox_switch$switch\n" if $mode eq 'multi';
+            print "graph_title Freebox ethernet port $switch\n";
             print "graph_vlabel Byte / second\n";
-            print "switch_rx.label RX rate\n";
-            print "switch_tx.label TX rate\n";
+            print "switch_rx.label RX rate (+)\n";
+            print "switch_tx.label TX rate (-)\n";
+            print "switch_rx.draw AREA\n";
+            print "switch_tx.draw AREA\n";
             print "graph_category localnet\n";
         }
     }
@@ -260,16 +272,18 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "multigraph freebox_snr\n" if $mode eq 'multi';
         print "graph_title Freebox Signal Noise Ratio\n";
         print "graph_vlabel dB\n";
-        print "snr_up.label SNR up\n";
-        print "snr_down.label SNR down\n";
+        print "snr_down.label SNR down (+)\n";
+        print "snr_up.label SNR up (-)\n";
+        print "snr_down.draw AREA\n";
+        print "snr_up.draw AREA\n";
         print "graph_category xdsl\n";
     }
     if ( shall_print( $mode, 'attn' ) ){
         print "multigraph freebox_attn\n" if $mode eq 'multi';
         print "graph_title Freebox Attenuation\n";
         print "graph_vlabel dB\n";
-        print "attn_up.label Attenuation up\n";
-        print "attn_down.label Attenuation down\n";
+        print "attn_down.label Attenuation down (+)\n";
+        print "attn_up.label Attenuation up (-)\n";
         print "graph_category xdsl\n";
     }
     if ( shall_print( $mode, 'fec' ) ){
@@ -280,8 +294,8 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "fec_down.type DERIVE\n";
         print "fec_up.min 0\n";
         print "fec_down.min 0\n";
-        print "fec_up.label FEC up\n";
-        print "fec_down.label FEC down\n";
+        print "fec_down.label FEC down (+)\n";
+        print "fec_up.label FEC up (-)\n";
         print "graph_category xdsl\n";
     }
     if ( shall_print( $mode, 'fec_up' ) ){
@@ -324,14 +338,18 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
           my @stations = grep { $_->{net_role} eq 'sta' } @$fps;
 
           if (@stations <= 1) {
-              print "freeplug_rx.label receive speed\n";
-              print "freeplug_tx.label transmit speed\n";
+              print "freeplug_rx.label receive speed (+)\n";
+              print "freeplug_tx.label transmit speed (-)\n";
+              print "freeplug_rx.draw AREA\n";
+              print "freeplug_tx.draw AREA\n";
           } else {
               # If we have more than one station, number them to allow
               # distinguishing between them.
               for (my $fpnum = 1; $fpnum <= @stations; $fpnum++) {
-                  print "freeplug${fpnum}_rx.label receive speed for station $fpnum\n";
-                  print "freeplug${fpnum}_tx.label transmit speed for station $fpnum\n";
+                  print "freeplug${fpnum}_rx.label receive speed for station $fpnum (+)\n";
+                  print "freeplug${fpnum}_rx.draw AREA\n";
+                  print "freeplug${fpnum}_tx.label transmit speed for station $fpnum (-)\n";
+                  print "freeplug${fpnum}_tx.draw AREA\n";
               }
           }
         }
@@ -349,8 +367,8 @@ sub put_val {
         }
     if ($what eq 'bandwidth') {
         my $cs = $fb->connection;
-        print "bandwidth_up.value " . $cs->{"bandwidth_up"}/8 . "\n";
         print "bandwidth_down.value " . $cs->{"bandwidth_down"}/8 . "\n";
+        print "bandwidth_up.value " . -1 * $cs->{"bandwidth_up"}/8 . "\n";
       }
     if ($what eq 'comb_up') {
         my $ds = $fb->downloads_stats;
@@ -374,31 +392,31 @@ sub put_val {
         print "btrate_down.value " . $ds->{"rx_rate"} . "\n";
         print "btrate_downthr.value " . $ds->{"throttling_rate"}{"rx_rate"} . "\n";
       }
-    if ( $what eq 'up' ) {
-        my $cs = $fb->connection;
-        print "rate_up.value " . $cs->{"rate_up"} . "\n";
-      }
-    if ($what eq 'down' ) {
+    if ($what eq 'down' or $what eq 'rate') {
         my $cs = $fb->connection;
         print "rate_down.value " . $cs->{"rate_down"} . "\n";
       }
+    if ( $what eq 'up' or $what eq 'rate') {
+        my $cs = $fb->connection;
+        print "rate_up.value " . ( $what eq 'rate' ? -1:1 ) * $cs->{"rate_up"} . "\n";
+      }
     if ($what eq 'snr') {
         my $xs = $fb->connection_xdsl;
-        print "snr_up.value " . $xs->{up}{snr_10}/10 . "\n";
         print "snr_down.value " . $xs->{down}{snr_10}/10 . "\n";
-      }
-    if ($what eq 'fec_up' or $what eq 'fec') {
-        my $xs = $fb->connection_xdsl;
-        print "fec_up.value " . $xs->{up}{fec}*60 . "\n";
+        print "snr_up.value " . -1 * $xs->{up}{snr_10}/10 . "\n";
       }
     if ($what eq 'fec_down' or $what eq 'fec') {
         my $xs = $fb->connection_xdsl;
         print "fec_down.value " . $xs->{down}{fec}*60 . "\n";
       }
+    if ($what eq 'fec_up' or $what eq 'fec') {
+        my $xs = $fb->connection_xdsl;
+        print "fec_up.value " . ( $what eq 'fec' ? -1:1 ) * $xs->{up}{fec}*60 . "\n";
+      }
     if ($what eq 'attn') {
         my $xs = $fb->connection_xdsl;
-        print "attn_up.value " . $xs->{up}{attn_10}/10 . "\n";
         print "attn_down.value " . $xs->{down}{attn_10}/10 . "\n";
+        print "attn_up.value " . -1 * $xs->{up}{attn_10}/10 . "\n";
       }
     if ($what eq 'uptime') {
         my $xs = $fb->connection_xdsl;
@@ -413,7 +431,7 @@ sub put_val {
         }
         my $ss = $fb->switch_port("$switch_n/stats");
         print "switch_rx.value " . $ss->{rx_bytes_rate} . "\n";
-        print "switch_tx.value " . $ss->{tx_bytes_rate} . "\n";
+        print "switch_tx.value " . -1 * $ss->{tx_bytes_rate} . "\n";
       }
     if ($what eq 'freeplug' and $fb->freeplugs_net ) {
         my $try;
@@ -432,12 +450,12 @@ sub put_val {
 
             if (@stations == 1) {
                 print "freeplug_rx.value " . $fp->{rx_rate} . "\n";
-                print "freeplug_tx.value " . $fp->{tx_rate} . "\n";
+                print "freeplug_tx.value " . -1 * $fp->{tx_rate} . "\n";
             } else {
                 my $fpnum = 1;
                 for $fp (@stations) {
                     print "freeplug${fpnum}_rx.value " . $fp->{rx_rate} . "\n";
-                    print "freeplug${fpnum}_tx.value " . $fp->{tx_rate} . "\n";
+                    print "freeplug${fpnum}_tx.value " . -1 * $fp->{tx_rate} . "\n";
 
                     $fpnum++;
                 }
