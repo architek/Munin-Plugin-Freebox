@@ -90,6 +90,8 @@ my @multi;
 @multi = qw/ uptime bandwidth fec_up fec_down snr up down/;
 #full
 @multi = qw/ fec uptime bandwidth fec_up fec_down snr up down freeplug attn switch_1 switch_2 switch_3 switch_4 temp btrate_up btrate_down comb_down comb_up/;
+#full 2
+@multi = qw/ fec uptime bandwidth fec_up fec_down snr up down freeplug attn temp/;
 
 my ($app_id, $app_name, $app_version, $device_name) = ('APP ID', 'APP NAME', '1.0', 'debian');
 my @modes = ( @multi, 'multi' );
@@ -148,8 +150,8 @@ if (defined $ARGV[0] and $ARGV[0] eq 'suggest') {
 }
 
 
-if ($0 !~ /freebox_(.+)*$/ or !grep $1, @modes) {
-    die "Must be called freebox_{" . join('|',@modes) . "}.\n"
+if ($0 !~ /freebox_(.+)*$/ or !grep /$1/, @modes) {
+    die "Plugin was called with $0, must be called freebox_{" . join('|',@modes) . "}.\n"
 }
 
 my $mode = $1;
@@ -230,6 +232,7 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "graph_vlabel Byte / second\n";
         print "graph_category bandwidth\n";
         print "rate_up.label rate up\n";
+        print "rate_up.draw AREA\n";
     }
     if ( shall_print( $mode, 'down' ) ){
         print "multigraph freebox_down\n" if $mode eq 'multi';
@@ -237,6 +240,7 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
         print "graph_vlabel Byte / second\n";
         print "graph_category bandwidth\n";
         print "rate_down.label rate down\n";
+        print "rate_down.draw AREA\n";
     }
     if ( $mode =~ /^switch/ or $is_multi{switch} ) {
         for my $switch ( $mode eq 'multi' ? (1..4):($switch_port) ) {
