@@ -19,20 +19,20 @@ Keep in mind that WWW::FBX should be reachable from root user (either through lo
 
 # CONFIGURATION
 
-Create links of what you want to plot
+Recommended way: Use a multi graph call (the script will only be called once). Adapt @multi array to select what to plot.
+
+    sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_multi
+
+Otherwise, create links of what you want to plot. The drawback is that in that case, a new connection will be opened for every plot with added CPU usage.
 
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_bandwidth
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_freeplug
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_temp
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_switch1
 
-Or use a multi graph call (the script will only be called once). Adapt @multi array to select what to plot.
-
-    sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_multi
-
 Now auto configure. This will request app\\\_token and track\\\_id from the Freebox itself.
 
-    sudo munin-run --debug freebox_bandwidth autoconf
+    sudo munin-run --debug freebox_multi autoconf
 
 Add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provided
 
@@ -41,7 +41,11 @@ Add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provide
     env.app_token value-of-the-token
     env.track_id value-of-the-track_id
 
-Check everything is working with
+Check everything is working with:
+
+    munin-run --debug freebox_multi
+
+If not using multi mode:
 
     munin-run --debug freebox_bandwidth
     munin-run --debug freebox_freeplug
