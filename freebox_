@@ -95,7 +95,7 @@ my @multi;
 #full
 @multi = qw/ fec uptime bandwidth fec_up fec_down snr rate up down freeplug attn switch1 switch2 switch3 switch4 temp btrate_up btrate_down comb_down comb_up/;
 #full nobt
-@multi = qw/ fec uptime bandwidth snr rate freeplug attn temp switch1 switch2 switch3 switch4/;
+@multi = qw/ fec uptime bandwidth snr up down freeplug attn temp switch1 switch2 switch3 switch4/;
 
 my ($app_id, $app_name, $app_version, $device_name) = ('APP ID', 'APP NAME', '1.0', 'debian');
 my @modes = ( @multi, 'multi' );
