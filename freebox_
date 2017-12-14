@@ -83,6 +83,9 @@ GPLv2
 
 =cut
 
+#%# family=manual
+#%# capabilities=autoconf suggest
+
 use strict;
 use warnings;
 use Munin::Plugin;
@@ -90,16 +93,28 @@ use WWW::FBX;
 
 my @multi;
 
-#line stats
+#############################
+#Configure to your needs
+
+#dsl line stats
 @multi = qw/ uptime bandwidth fec_up fec_down snr up down/;
 #full
 @multi = qw/ fec uptime bandwidth fec_up fec_down snr rate up down freeplug attn switch1 switch2 switch3 switch4 temp btrate_up btrate_down comb_down comb_up/;
 #full nobt
-@multi = qw/ fec uptime bandwidth snr up down freeplug attn temp switch1 switch2 switch3 switch4/;
+@multi = qw/ fec uptime bandwidth snr up down attn temp switch1 switch2 switch3 switch4/;
+
+my @colours = qw/B9E4F1 A248CE FFF9AC FF3030/;
+##############################
 
 my ($app_id, $app_name, $app_version, $device_name) = ('APP ID', 'APP NAME', '1.0', 'debian');
 my @modes = ( @multi, 'multi' );
 my $switch_port;
+my %temps = (
+        cpum => 'CPU (Marvell)',
+        cpub => 'CPU (Broadcom)',
+        sw   => 'switch',
+    );
+
 
 sub get_freebox {
     if (!defined($ENV{app_token})) {
@@ -121,7 +136,6 @@ EOF
                 app_token => $ENV{app_token},
             );
 }
-
 
 if (defined $ARGV[0] and $ARGV[0] eq 'autoconf') {
     my $error;
@@ -154,8 +168,8 @@ if (defined $ARGV[0] and $ARGV[0] eq 'suggest') {
 }
 
 
-if ($0 !~ /freebox_(.+)*$/ or !grep /\b$1\b/, @modes) {
-    die "Plugin was called with $0, must be called freebox_{" . join('|',@modes) . "}.\n"
+if ($0 !~ /freebox_(.+)$/ or !grep /\b$1\b/, @modes) {
+    die "Plugin was called with $0, must be called freebox_{" , join('|',@modes) , "}.\n"
 }
 
 my $mode = $1;
@@ -163,12 +177,6 @@ my $mode = $1;
 my %is_multi = map { $_ => 1 } @multi;
 
 $switch_port = $1 if $0 =~ /freebox_switch(.*)/;
-
-my %temps = (
-        cpum => 'CPU (Marvell)',
-        cpub => 'CPU (Broadcom)',
-        sw   => 'switch',
-    );
 
 sub shall_print {
   my ($mode, $pat) = @_;
@@ -179,154 +187,205 @@ if (defined $ARGV[0] and $ARGV[0] eq 'config') {
 
     if ( shall_print( $mode, 'temp' ) ){
         print "multigraph freebox_temp\n" if $mode eq 'multi';
-        print "graph_args --base 1000 -l 0\n";
-        print "graph_title Freebox temperatures\n";
-        print "graph_vlabel degrees Celsius\n";
-        print "graph_category freebox\n";
-
+        print <<FOO;
+graph_args --base 1000 -l 0
+graph_title Freebox temperatures
+graph_vlabel degrees Celsius
+graph_category freebox
+FOO
+        my $i=0;
         for my $t (keys %temps) {
             print "$t.label $temps{$t}\n";
             print "$t.warning 80\n";
             print "$t.critical 90\n";
+            print "$t.colour $colours[$i]\n";
+            $i++
         }
     }
     if ( shall_print( $mode, 'bandwidth' ) ){
         print "multigraph freebox_bandwidth\n" if $mode eq 'multi';
-        print "graph_title Freebox bandwidth\n";
-        print "graph_vlabel Byte / second\n";
-        print "graph_category xdsl\n";
-        print "bandwidth_down.label bandwidth down (+)\n";
-        print "bandwidth_up.label bandwidth up (-)\n";
+        print <<FOO;
+graph_title Freebox bandwidth
+graph_vlabel Byte / second
+graph_category xdsl
+bandwidth_down.label bandwidth down (+)
+bandwidth_up.label bandwidth up (-)
+bandwidth_down.colour $colours[0]
+bandwidth_up.colour $colours[1]
+FOO
     }
     if ( shall_print( $mode, 'comb_down' ) ){
         print "multigraph freebox_comb_down\n" if $mode eq 'multi';
-        print "graph_title Freebox Combined down rate\n";
-        print "graph_vlabel Byte / second\n";
-        print "graph_category bandwidth\n";
-        print "rate_down.label rate down\n";
-        print "btrate_down.label bittorrent down\n";
+        print <<FOO;
+graph_title Freebox Combined down rate
+graph_vlabel Byte / second
+graph_category bandwidth
+rate_down.label rate down
+btrate_down.label bittorrent down
+FOO
     }
     if ( shall_print( $mode, 'comb_up' ) ){
         print "multigraph freebox_comb_up\n" if $mode eq 'multi';
-        print "graph_title Freebox Combined up rate\n";
-        print "graph_vlabel Byte / second\n";
-        print "graph_category bandwidth\n";
-        print "rate_up.label rate up\n";
-        print "btrate_up.label bittorrent up\n";
+        print <<FOO;
+graph_title Freebox Combined up rate
+graph_vlabel Byte / second
+graph_category bandwidth
+rate_up.label rate up
+btrate_up.label bittorrent up
+FOO
     }
     if ( shall_print( $mode, 'btrate_up' ) ){
         print "multigraph freebox_btrate_up\n" if $mode eq 'multi';
-        print "graph_title Freebox Bittorrent up rate\n";
-        print "graph_vlabel Byte / second\n";
-        print "graph_category bandwidth\n";
-        print "btrate_up.label bittorrent up\n";
-        print "btrate_upthr.label bittorrent up throttle\n";
+        print <<FOO;
+graph_title Freebox Bittorrent up rate
+graph_vlabel Byte / second
+graph_category bandwidth
+btrate_up.label bittorrent up
+btrate_upthr.label bittorrent up throttle
+FOO
     }
     if ( shall_print( $mode, 'btrate_down' ) ){
         print "multigraph freebox_btrate_down\n" if $mode eq 'multi';
-        print "graph_title Freebox Bittorrent down rate\n";
-        print "graph_vlabel Byte / second\n";
-        print "graph_category bandwidth\n";
-        print "btrate_down.label bittorrent down\n";
-        print "btrate_downthr.label bittorrent down throttle\n";
+        print <<FOO;
+graph_title Freebox Bittorrent down rate
+graph_vlabel Byte / second
+graph_category bandwidth
+btrate_down.label bittorrent down
+btrate_downthr.label bittorrent down throttle
+FOO
     }
     if ( shall_print( $mode, 'rate' ) ){
         print "multigraph freebox_rate\n" if $mode eq 'multi';
-        print "graph_title Freebox bandwidth uplink\n";
-        print "graph_vlabel Byte / second\n";
-        print "graph_category bandwidth\n";
-        print "rate_down.label rate down\n";
-        print "rate_down.draw AREA\n";
-        print "rate_up.label rate up\n";
-        print "rate_up.draw AREA\n";
+        print <<FOO;
+graph_title Freebox bandwidth uplink
+graph_vlabel Byte / second
+graph_category bandwidth
+rate_down.label rate down
+rate_down.draw AREA
+rate_up.label rate up
+rate_up.draw AREA
+rate_down.colour $colours[0]
+rate_up.colour $colours[1]
+FOO
     }
     if ( shall_print( $mode, 'up' ) ){
         print "multigraph freebox_up\n" if $mode eq 'multi';
-        print "graph_title Freebox rate uplink\n";
-        print "graph_vlabel Byte / second\n";
-        print "graph_category bandwidth\n";
-        print "rate_up.label rate up\n";
-        print "rate_up.draw AREA\n";
+        print <<FOO;
+graph_title Freebox rate uplink
+graph_vlabel Byte / second
+graph_category bandwidth
+rate_up.label rate up
+rate_up.draw AREA
+rate_up.colour $colours[1]
+FOO
     }
     if ( shall_print( $mode, 'down' ) ){
         print "multigraph freebox_down\n" if $mode eq 'multi';
-        print "graph_title Freebox rate downlink\n";
-        print "graph_vlabel Byte / second\n";
-        print "graph_category bandwidth\n";
-        print "rate_down.label rate down\n";
-        print "rate_down.draw AREA\n";
+        print <<FOO;
+graph_title Freebox rate downlink
+graph_vlabel Byte / second
+graph_category bandwidth
+rate_down.label rate down
+rate_down.draw AREA
+rate_down.colour $colours[0]
+FOO
     }
     if ( $mode =~ /^switch[1-4]/ or $is_multi{switch1} ) {
         for my $switch ( $mode eq 'multi' ? (1..4):($switch_port) ) {
             print "multigraph freebox_switch$switch\n" if $mode eq 'multi';
-            print "graph_title Freebox ethernet port $switch\n";
-            print "graph_vlabel Byte / second\n";
-            print "switch_rx.label RX rate (+)\n";
-            print "switch_tx.label TX rate (-)\n";
-            print "switch_rx.draw AREA\n";
-            print "switch_tx.draw AREA\n";
-            print "graph_category localnet\n";
+            print <<FOO;
+graph_title Freebox ethernet port $switch
+graph_vlabel Byte / second
+switch_rx.label RX rate (+)
+switch_tx.label TX rate (-)
+switch_rx.draw AREA
+switch_tx.draw AREA
+switch_rx.colour $colours[0]
+switch_tx.colour $colours[1]
+graph_category localnet
+FOO
         }
     }
     if ( shall_print( $mode, 'snr' ) ){
         print "multigraph freebox_snr\n" if $mode eq 'multi';
-        print "graph_title Freebox Signal Noise Ratio\n";
-        print "graph_vlabel dB\n";
-        print "snr_down.label SNR down (+)\n";
-        print "snr_up.label SNR up (-)\n";
-        print "snr_down.draw AREA\n";
-        print "snr_up.draw AREA\n";
-        print "graph_category xdsl\n";
+        print <<FOO;
+graph_title Freebox Signal Noise Ratio
+graph_vlabel dB
+snr_down.label SNR down (+)
+snr_up.label SNR up (-)
+snr_down.draw AREA
+snr_up.draw AREA
+snr_down.colour $colours[0]
+snr_up.colour $colours[1]
+graph_category xdsl
+FOO
     }
     if ( shall_print( $mode, 'attn' ) ){
         print "multigraph freebox_attn\n" if $mode eq 'multi';
-        print "graph_title Freebox Attenuation\n";
-        print "graph_vlabel dB\n";
-        print "attn_down.label Attenuation down (+)\n";
-        print "attn_up.label Attenuation up (-)\n";
-        print "graph_category xdsl\n";
+        print <<FOO;
+graph_title Freebox Attenuation
+graph_vlabel dB
+attn_down.label Attenuation down (+)
+attn_up.label Attenuation up (-)
+attn_down.colour $colours[0]
+attn_up.colour $colours[1]
+graph_category xdsl
+FOO
     }
     if ( shall_print( $mode, 'fec' ) ){
         print "multigraph freebox_fec\n" if $mode eq 'multi';
-        print "graph_title Freebox Forward Error Correction\n";
-        print "graph_vlabel number/min\n";
-        print "fec_up.type DERIVE\n";
-        print "fec_down.type DERIVE\n";
-        print "fec_up.min 0\n";
-        print "fec_down.min 0\n";
-        print "fec_down.label FEC down (+)\n";
-        print "fec_up.label FEC up (-)\n";
-        print "graph_category xdsl\n";
+        print <<FOO;
+graph_title Freebox Forward Error Correction
+graph_vlabel number/min
+fec_up.type DERIVE
+fec_down.type DERIVE
+fec_up.min 0
+fec_down.min 0
+fec_down.label FEC down (+)
+fec_up.label FEC up (-)
+fec_down.colour $colours[0]
+fec_up.colour $colours[1]
+graph_category xdsl
+FOO
     }
     if ( shall_print( $mode, 'fec_up' ) ){
         print "multigraph freebox_fec_up\n" if $mode eq 'multi';
-        print "graph_title Freebox Forward Error Correction Up\n";
-        print "graph_vlabel number/min\n";
-        print "fec_up.type DERIVE\n";
-        print "fec_up.min 0\n";
-        print "fec_up.label FEC up\n";
-        print "graph_category xdsl\n";
+        print <<FOO;
+graph_title Freebox Forward Error Correction Up
+graph_vlabel number/min
+fec_up.type DERIVE
+fec_up.min 0
+fec_up.label FEC up
+fec_up.colour $colours[1]
+graph_category xdsl
+FOO
     }
     if ( shall_print( $mode, 'fec_down' ) ){
         print "multigraph freebox_fec_down\n" if $mode eq 'multi';
-        print "graph_title Freebox Forward Error Correction Down\n";
-        print "graph_vlabel number/min\n";
-        print "fec_down.type DERIVE\n";
-        print "fec_down.min 0\n";
-        print "fec_down.label FEC down\n";
-        print "graph_category xdsl\n";
+        print <<FOO;
+graph_title Freebox Forward Error Correction Down
+graph_vlabel number/min
+fec_down.type DERIVE
+fec_down.min 0
+fec_down.label FEC down
+fec_down.colour $colours[0]
+graph_category xdsl
+FOO
     }
     if ( shall_print( $mode, 'uptime' ) ){
         print "multigraph freebox_uptime\n" if $mode eq 'multi';
-        print "graph_title Freebox Connection Uptime\n";
-        print "graph_vlabel days\n";
-        print "graph_args --base 1000 -l 0\n";
-        print "graph_scale no\n";
-        print "uptime.label uptime\n";
-        print "uptime.draw AREA\n";
-        print "graph_category freebox\n";
+        print <<FOO;
+graph_title Freebox Connection Uptime
+graph_vlabel days
+graph_args --base 1000 -l 0
+graph_scale no
+uptime.label uptime
+uptime.draw AREA
+uptime.colour $colours[0]
+graph_category freebox
+FOO
     }
-    if ( shall_print( $mode, 'freeplug' ) ){
+    if ( shall_print( $mode, 'freeplug' ) ){    # this config connects to the freebox
         print "multigraph freebox_freeplug\n" if $mode eq 'multi';
         print "graph_title Freeplugs connection speed\n";
         print "graph_vlabel Mbit / second\n";
@@ -362,9 +421,9 @@ sub put_val {
     if ($what eq 'temp') {
         my $sc = $fb->system;
         for my $t (keys %temps) {
-            print "$t.value " . $sc->{"temp_$t"} . "\n";
+            print "$t.value ", $sc->{"temp_$t"}, "\n";
           }
-        }
+      }
     if ($what eq 'bandwidth') {
         my $cs = $fb->connection;
         print "bandwidth_down.value " . $cs->{"bandwidth_down"}/8 . "\n";
@@ -476,6 +535,3 @@ my $fb = get_freebox;
 put_val($fb, $mode);
 
 exit 0
-#%# family=manual
-#%# capabilities=autoconf suggest
-
