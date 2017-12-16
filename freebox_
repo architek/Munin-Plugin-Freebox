@@ -96,11 +96,11 @@ my @multi;
 #############################
 #Configure to your needs
 
-#dsl line stats
+#only dsl line stats
 @multi = qw/ uptime bandwidth fec_up fec_down snr up down/;
 #full
 @multi = qw/ fec uptime bandwidth fec_up fec_down snr rate up down freeplug attn switch1 switch2 switch3 switch4 temp btrate_up btrate_down comb_down comb_up/;
-#full nobt
+#full nobt nofreeplugs
 @multi = qw/ fec uptime bandwidth snr up down attn temp switch1 switch2 switch3 switch4/;
 
 my @colours = qw/B9E4F1 A248CE FFF9AC FF3030/;
@@ -397,18 +397,26 @@ FOO
           my @stations = grep { $_->{net_role} eq 'sta' } @$fps;
 
           if (@stations <= 1) {
-              print "freeplug_rx.label receive speed (+)\n";
-              print "freeplug_tx.label transmit speed (-)\n";
-              print "freeplug_rx.draw AREA\n";
-              print "freeplug_tx.draw AREA\n";
+              print <<FOO;
+freeplug_rx.label receive speed (+)
+freeplug_tx.label transmit speed (-)
+freeplug_rx.draw AREA
+freeplug_tx.draw AREA
+freeplug_rx.colour $colours[0]
+freeplug_tx.colour $colours[1]
+FOO
           } else {
               # If we have more than one station, number them to allow
               # distinguishing between them.
-              for (my $fpnum = 1; $fpnum <= @stations; $fpnum++) {
-                  print "freeplug${fpnum}_rx.label receive speed for station $fpnum (+)\n";
-                  print "freeplug${fpnum}_rx.draw AREA\n";
-                  print "freeplug${fpnum}_tx.label transmit speed for station $fpnum (-)\n";
-                  print "freeplug${fpnum}_tx.draw AREA\n";
+              for my $fpnum (1..@stations) {
+                  print <<FOO;
+freeplug${fpnum}_rx.label receive speed for station $fpnum (+)
+freeplug${fpnum}_rx.draw AREA
+freeplug${fpnum}_tx.label transmit speed for station $fpnum (-)
+freeplug${fpnum}_tx.draw AREA
+freeplug${fpnum}_rx.colour $colours[0]
+freeplug${fpnum}_tx.colour $colours[1]
+FOO
               }
           }
         }
@@ -515,7 +523,6 @@ sub put_val {
                 for $fp (@stations) {
                     print "freeplug${fpnum}_rx.value " . $fp->{rx_rate} . "\n";
                     print "freeplug${fpnum}_tx.value " . -1 * $fp->{tx_rate} . "\n";
-
                     $fpnum++;
                 }
             }
