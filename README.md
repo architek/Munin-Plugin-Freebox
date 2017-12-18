@@ -58,7 +58,7 @@ If not using multi mode:
 
 *Download and Upload graphs from bandwidth category*
 
-[![image.png](https://s8.postimg.org/g9lr06tgl/image.png)](https://postimg.org/image/yp67xl7kx/)
+![Forward Error Corrections](https://user-images.githubusercontent.com/490053/34131136-ad98f9a2-e44a-11e7-87f2-df1916ec41af.png)
 
 *Forward Error Corrections zoomed graph*
 
