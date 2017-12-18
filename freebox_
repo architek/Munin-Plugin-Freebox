@@ -55,18 +55,6 @@ If not using multi mode:
     munin-run --debug freebox_temp
     munin-run --debug freebox_switch1
 
-=head1 USAGE
-
-This is a wildcard plugin which can be used to monitor several different
-families of Freebox parameters. Run it with C<suggest> command line argument
-to see all the possible operation modes and create a symlink called
-C<freebox_mode> to this plugin from the Munin plugins directory, e.g.
-C<freebox_temp>.
-
-=head1 AUTHORS
-
-Copyright 2014 Vadim Zeitlin <vz-cpan@zeitlins.org>
-
 =head1 LICENSE
 
 GPLv2
