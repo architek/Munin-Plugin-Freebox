@@ -55,6 +55,20 @@ If not using multi mode:
     munin-run --debug freebox_temp
     munin-run --debug freebox_switch1
 
+=head1 SCREENS
+
+=begin markdown
+
+[![image.png](https://s8.postimg.org/g9lr05j5x/image.png)](https://postimg.org/image/phdzguq81/)
+
+*Download and Upload graphs from bandwidth category*
+
+[![image.png](https://s8.postimg.org/g9lr06tgl/image.png)](https://postimg.org/image/yp67xl7kx/)
+
+*Forward Error Corrections zoomed graph*
+
+=end markdown
+
 =head1 LICENSE
 
 GPLv2

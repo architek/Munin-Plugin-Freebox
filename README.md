@@ -62,18 +62,6 @@ If not using multi mode:
 
 *Forward Error Corrections zoomed graph*
 
-# USAGE
-
-This is a wildcard plugin which can be used to monitor several different
-families of Freebox parameters. Run it with `suggest` command line argument
-to see all the possible operation modes and create a symlink called
-`freebox_mode` to this plugin from the Munin plugins directory, e.g.
-`freebox_temp`.
-
-# AUTHORS
-
-Copyright 2014 Vadim Zeitlin <vz-cpan@zeitlins.org>
-
 # LICENSE
 
 GPLv2
