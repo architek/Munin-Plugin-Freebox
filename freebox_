@@ -313,8 +313,6 @@ graph_title Freebox Signal Noise Ratio
 graph_vlabel dB
 snr_down.label SNR down (+)
 snr_up.label SNR up (-)
-snr_down.draw AREA
-snr_up.draw AREA
 snr_down.colour $colours[0]
 snr_up.colour $colours[1]
 graph_category xdsl
