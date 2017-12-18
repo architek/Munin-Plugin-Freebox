@@ -54,7 +54,7 @@ If not using multi mode:
 
 # SCREENS
 
-[![image.png](https://s8.postimg.org/g9lr05j5x/image.png)](https://postimg.org/image/phdzguq81/)
+![Download and Upload graphs](https://user-images.githubusercontent.com/490053/34131111-96d4d4e8-e44a-11e7-9b32-64b261be0913.png)
 
 *Download and Upload graphs from bandwidth category*
 
