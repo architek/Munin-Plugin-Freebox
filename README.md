@@ -54,11 +54,11 @@ If not using multi mode:
 
 # SCREENS
 
-[![image.png](https://s8.postimg.org/ljqprdqj9/image.png)](https://postimg.org/image/5y9e7fekx/)
+[![image.png](https://s8.postimg.org/g9lr05j5x/image.png)](https://postimg.org/image/phdzguq81/)
 
 *Download and Upload graphs from bandwidth category*
 
-[![image.png](https://s8.postimg.org/e3rg5skw5/image.png)](https://postimg.org/image/4j7tiwvk1/)
+[![image.png](https://s8.postimg.org/g9lr06tgl/image.png)](https://postimg.org/image/yp67xl7kx/)
 
 *Forward Error Corrections zoomed graph*
 
