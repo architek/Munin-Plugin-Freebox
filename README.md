@@ -52,6 +52,10 @@ If not using multi mode:
     munin-run --debug freebox_temp
     munin-run --debug freebox_switch1
 
+# SCREENS
+
+[![image.png](https://s8.postimg.org/ljqprdqj9/image.png)](https://postimg.org/image/5y9e7fekx/)
+
 # USAGE
 
 This is a wildcard plugin which can be used to monitor several different
