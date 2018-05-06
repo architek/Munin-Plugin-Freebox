@@ -101,9 +101,9 @@ my @multi;
 #only dsl line stats
 @multi = qw/ uptime bandwidth fec_up fec_down snr up down/;
 #full
-@multi = qw/ fec uptime bandwidth fec_up fec_down snr rate up down freeplug attn switch1 switch2 switch3 switch4 temp btrate_up btrate_down comb_down comb_up/;
+@multi = qw/ fec uptime bandwidth fec_up fec_down fec_downa snr rate up down freeplug attn switch1 switch2 switch3 switch4 temp btrate_up btrate_down comb_down comb_up/;
 #full nobt nofreeplugs
-@multi = qw/ fec uptime bandwidth snr up down attn temp switch1 switch2 switch3 switch4/;
+@multi = qw/ fec fec_downa uptime bandwidth snr up down attn temp switch1 switch2 switch3 switch4/;
 
 my @colours = qw/B9E4F1 A248CE FFF9AC FF3030/;
 ##############################
@@ -144,7 +144,11 @@ if (defined $ARGV[0] and $ARGV[0] eq 'autoconf') {
     eval {
         require WWW::FBX;
         require Scalar::Util;
-        my $fbx=WWW::FBX->new(app_id=>$app_id,app_name=>$app_name,app_version=>$app_version,device_name=>$device_name);
+        my $fbx=WWW::FBX->new(
+            app_id=>$app_id,
+            app_name=>$app_name,
+            app_version=>$app_version,
+            device_name=>$device_name);
         my $app_token = $fbx->app_token;
         my $track_id = $fbx->track_id;
 
@@ -372,10 +376,22 @@ fec_down.colour $colours[0]
 graph_category xdsl
 FOO
     }
+    if ( shall_print( $mode, 'fec_downa' ) ){
+        print "multigraph freebox_fec_downa\n" if $mode eq 'multi';
+        print <<FOO;
+graph_title Freebox Forward Error Correction Down Tot
+graph_vlabel number
+fec_downa.draw AREA
+fec_downa.min 0
+fec_downa.label FEC down Tot
+fec_downa.colour $colours[0]
+graph_category xdsl
+FOO
+    }
     if ( shall_print( $mode, 'uptime' ) ){
         print "multigraph freebox_uptime\n" if $mode eq 'multi';
         print <<FOO;
-graph_title Freebox Connection Uptime
+graph_title Freebox Box Uptime
 graph_vlabel days
 graph_args --base 1000 -l 0
 graph_scale no
@@ -479,6 +495,10 @@ sub put_val {
     if ($what eq 'fec_up' or $what eq 'fec') {
         my $xs = $fb->connection_xdsl;
         print "fec_up.value " . ( $what eq 'fec' ? -1:1 ) * $xs->{up}{fec}*60 . "\n";
+      }
+    if ($what eq 'fec_downa' or $what eq 'fec') {
+        my $xs = $fb->connection_xdsl;
+        print "fec_downa.value " . $xs->{down}{fec} . "\n";
       }
     if ($what eq 'attn') {
         my $xs = $fb->connection_xdsl;
