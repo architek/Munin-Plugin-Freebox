@@ -99,11 +99,11 @@ my @multi;
 #Configure to your needs
 
 #only dsl line stats
-@multi = qw/ uptime bandwidth fec_up fec_down snr up down/;
+@multi = qw/ www uptime bandwidth fec_up fec_down snr up down/;
 #full
-@multi = qw/ fec uptime bandwidth fec_up fec_down fec_downa snr rate up down freeplug attn switch1 switch2 switch3 switch4 temp btrate_up btrate_down comb_down comb_up/;
+@multi = qw/ www fec uptime buptime bandwidth fec_up fec_down fec_downa snr rate up down freeplug attn switch1 switch2 switch3 switch4 temp btrate_up btrate_down comb_down comb_up disksts/;
 #full nobt nofreeplugs
-@multi = qw/ fec fec_downa uptime bandwidth snr up down attn temp switch1 switch2 switch3 switch4/;
+@multi = qw/ www fec fec_downa uptime buptime bandwidth snr up down attn temp switch1 switch2 switch3 switch4 disksts/;
 
 my @colours = qw/B9E4F1 A248CE FFF9AC FF3030/;
 ##############################
@@ -116,6 +116,7 @@ my %temps = (
         cpub => 'CPU (Broadcom)',
         sw   => 'switch',
     );
+my $www_ok;
 
 
 sub get_freebox {
@@ -129,14 +130,28 @@ Please autoconf the plugin and fill in your configuration app_token
 to use this plugin.
 EOF
     }
-    WWW::FBX->new(
+    my $error;
+    my $fbx;
+
+    eval {
+        $fbx = WWW::FBX->new(
                 app_id => $app_id,
                 app_name => $app_name,
                 app_version => $app_version,
                 device_name => $device_name,
                 track_id => $ENV{track_id},
                 app_token => $ENV{app_token},
-            );
+            ); 
+        };
+    if ($error = $@) {
+        if ( Scalar::Util::blessed($error) and $error->isa('WWW::FBX::Error') ) {
+            $error = $error->error;
+        }
+        $www_ok = 0;
+    } else {
+        $www_ok = 1;
+    }
+    return $fbx;
 }
 
 if (defined $ARGV[0] and $ARGV[0] eq 'autoconf') {
@@ -148,7 +163,8 @@ if (defined $ARGV[0] and $ARGV[0] eq 'autoconf') {
             app_id=>$app_id,
             app_name=>$app_name,
             app_version=>$app_version,
-            device_name=>$device_name);
+            device_name=>$device_name
+            );
         my $app_token = $fbx->app_token;
         my $track_id = $fbx->track_id;
 
@@ -207,6 +223,20 @@ FOO
             print "$t.colour $colours[$i]\n";
             $i++
         }
+    }
+    if ( shall_print( $mode, 'www' ) ){
+        print "multigraph freebox_www\n" if $mode eq 'multi';
+        print <<FOO;
+graph_title Freebox Webserver
+graph_vlabel 0/1
+graph_category freebox
+www_sts.label Webserver State
+www_sts.colour $colours[0]
+www_sts.warning 1:1
+www_trn.label Webserver State Changed
+www_trn.colour $colours[1]
+www_trn.critical 0:0
+FOO
     }
     if ( shall_print( $mode, 'bandwidth' ) ){
         print "multigraph freebox_bandwidth\n" if $mode eq 'multi';
@@ -391,14 +421,38 @@ FOO
     if ( shall_print( $mode, 'uptime' ) ){
         print "multigraph freebox_uptime\n" if $mode eq 'multi';
         print <<FOO;
+graph_title Freebox Connection Uptime
+graph_vlabel days
+graph_args --base 1000 -l 0
+graph_scale no
+uptime.label connection uptime
+uptime.draw AREA
+uptime.colour $colours[0]
+graph_category xdsl
+FOO
+    }
+    if ( shall_print( $mode, 'buptime' ) ){
+        print "multigraph freebox_buptime\n" if $mode eq 'multi';
+        print <<FOO;
 graph_title Freebox Box Uptime
 graph_vlabel days
 graph_args --base 1000 -l 0
 graph_scale no
-uptime.label uptime
-uptime.draw AREA
-uptime.colour $colours[0]
+buptime.label box uptime
+buptime.draw AREA
+buptime.colour $colours[0]
 graph_category freebox
+FOO
+    }
+    if ( shall_print( $mode, 'disksts' ) ){
+        print "multigraph freebox_disksts\n" if $mode eq 'multi';
+        print <<FOO;
+graph_title Freebox hard disk status
+graph_vlabel Disk Status
+graph_category freebox
+disksts.label disk status
+disksts.colour $colours[0]
+disksts.info not_detected => 1, disabled => 2, initializing => 3, error => 4, active => 5
 FOO
     }
     if ( shall_print( $mode, 'freeplug' ) ){    # this config connects to the freebox
@@ -442,6 +496,23 @@ FOO
 
 sub put_val {
     my ($fb, $what) = @_;
+    
+    if ($what eq 'multi') {
+        for my $graph ( @multi ) {
+            print "multigraph freebox_$graph\n";
+            put_val($fb, $graph);
+        }
+    }
+    if ($what eq 'www') {
+        my %vals = restore_state();
+        my $www_trn = exists $vals{freebox_old_www} ? $vals{freebox_old_www} ^ $www_ok : 1;  # Detect transition
+        $vals{freebox_old_www} = $www_ok;  # Store new state
+        save_state(%vals);
+        print "www_trn.value $www_trn\n";
+        print "www_sts.value $www_ok\n";
+    }
+    return unless $www_ok;
+
     if ($what eq 'temp') {
         my $sc = $fb->system;
         for my $t (keys %temps) {
@@ -509,6 +580,15 @@ sub put_val {
         my $xs = $fb->connection_xdsl;
         printf "uptime.value %.2f\n" , $xs->{status}{uptime}/(3600*24);
       }
+    if ($what eq 'buptime') {
+        my $sy = $fb->system;
+        printf "buptime.value %.2f\n" , $sy->{uptime_val}/(3600*24);
+      }
+    if ($what eq 'disksts') {
+        my $txt = { "not_detected" => 1, "disabled" => 2, "initializing" => 3, "error" => 4, "active" => 5 };
+        my $sy = $fb->system;
+        printf "disksts.value %d\n" , $txt->{$sy->{disk_status}};
+      }
     if ($what =~ /^switch[1-4]/) {
         my $switch_n;
         if ( $mode eq 'multi' ) {
@@ -548,12 +628,6 @@ sub put_val {
             }
         }
       }
-    if ($what eq 'multi') {
-        for my $graph ( @multi ) {
-            print "multigraph freebox_$graph\n";
-            put_val($fb, $graph);
-        }
-    }
 }
 
 die "Usage: $0 [autoconf|config]\n" if @ARGV;
@@ -562,3 +636,4 @@ my $fb = get_freebox;
 put_val($fb, $mode);
 
 exit 0
+# vim: ft=perl : ts=4 : expandtab
