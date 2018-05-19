@@ -1,6 +1,5 @@
 #!/usr/bin/env perl
-
-
+use lib '/home/user/perl5/lib/perl5';
 =head1 NAME
 
 freebox - Plugin for monitoring Freebox parameters.
@@ -15,25 +14,29 @@ is required for this plugin to function and can be installed from CPAN.
     apt install munin-node
     apt install munin #only if you intend to run munin on the same host
 
-Keep in mind that WWW::FBX should be reachable from root user (either through local::lib or system install). Munin drops privileges with seteuid POSIX call.
-
     cpan install WWW::FBX
     git clone https://github.com/architek/Munin-Plugin-Freebox.git
 
+Munin drops privileges with seteuid POSIX call. It inherits from default @INC. If you installed WWW::FBX using local::lib, adapt the use lib line at the start
+
 =head1 CONFIGURATION
 
-Recommended way is to limit connections to the freebox: Use a multi graph call. Adapt @multi array to select what to plot.
+Link naming:
+
+Recommended way to limit connections to the freebox is by naming the plugin link as freebox_multi. Adapt @multi array to select what to plot.
 
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_multi
 
-Otherwise, create links of what you want to plot. The drawback is that in that case, a new connection will be opened for every plot with added CPU usage.
+Otherwise, create links of what you want to plot. In that case, a new connection will be opened for every plot. This will increase CPU usage on both side, to a point where you might receive "Interal error" messages from the freebox.
 
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_bandwidth
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_freeplug
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_temp
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_switch1
 
-Now auto configure. This will request app\_token and track\_id from the Freebox itself.
+Freebox authentication token:
+
+Just run auto configure. This will request app\_token and track\_id from the Freebox itself.
 
     sudo munin-run --debug freebox_multi autoconf
 
