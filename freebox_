@@ -21,7 +21,7 @@ Munin drops privileges with seteuid POSIX call. It inherits from default @INC. I
 
 =head1 CONFIGURATION
 
-Link naming:
+=head2 Link naming
 
 Recommended way to limit connections to the freebox is by naming the plugin link as freebox_multi. Adapt @multi array to select what to plot.
 
@@ -34,7 +34,7 @@ Otherwise, create links of what you want to plot. In that case, a new connection
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_temp
     sudo ln -s "$(pwd)/Munin-Plugin-Freebox/freebox_" /etc/munin/plugins/freebox_switch1
 
-Freebox authentication token:
+=head2 Freebox authentication token
 
 Just run auto configure. This will request app\_token and track\_id from the Freebox itself.
 
@@ -46,6 +46,8 @@ Add a freebox section in /etc/munin/plugin-conf.d/munin-node with values provide
     user foo
     env.app_token value-of-the-token
     env.track_id value-of-the-track_id
+
+=head2 Self test
 
 Check everything is working with:
 
